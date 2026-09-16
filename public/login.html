@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Giriş Yap / Kayıt Ol</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .auth-box { background: rgba(20,20,30,0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 40px; width: 100%; max-width: 450px; text-align: center; }
+    
+    .auth-tabs { display: flex; gap: 10px; margin-bottom: 30px; }
+    .auth-tabs button { flex: 1; padding: 12px; background: rgba(0,0,0,0.4); border: 1px solid transparent; color: #888; border-radius: 10px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+    .auth-tabs button.active { background: rgba(0,255,128,0.1); border-color: var(--accent); color: var(--accent); }
+
+    .auth-form { display: none; text-align: left; }
+    .auth-form.active { display: block; }
+    .auth-form label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #ccc; }
+    .auth-form input { width: 100%; padding: 12px; margin-bottom: 20px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-size: 1rem; }
+    .auth-form input:focus { border-color: var(--accent); outline: none; }
+    
+    .f12-guide { background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.85rem; color: #aaa; }
+    .f12-guide code { display: block; background: #000; color: #0f0; padding: 10px; margin-top: 10px; border-radius: 4px; user-select: all; font-family: monospace; overflow-x: auto; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+
+  <div class="auth-box glass">
+    <div class="brand" style="justify-content: center; margin-bottom: 30px;">
+      <div class="brand-text">
+        <span class="brand-name">Twitch Drops</span>
+      </div>
+    </div>
+
+    <div class="auth-tabs">
+      <button id="tabLogin" class="active">Giriş Yap</button>
+      <button id="tabRegister">Kayıt Ol (Yeni Lisans)</button>
+    </div>
+
+    <!-- LOGİN -->
+    <div id="formLogin" class="auth-form active">
+      <label>E-Posta Adresiniz</label>
+      <input type="email" id="logEmail" placeholder="ornek@mail.com" />
+      
+      <label>Şifreniz</label>
+      <input type="password" id="logPass" placeholder="••••••••" />
+      
+      <button id="btnLoginAction" class="btn" style="width:100%; font-size:1.1rem; padding:15px;">Giriş Yap</button>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="formRegister" class="auth-form">
+      
+      <label>E-Posta Adresiniz</label>
+      <input type="email" id="regEmail" placeholder="ornek@mail.com" />
+      
+      <label>Hesap Şifresi Belirleyin</label>
+      <input type="password" id="regPass" placeholder="Güçlü bir şifre seçin" />
+      
+      <label>İtemSatış Lisans Kodunuz (14 Hane)</label>
+      <input type="text" id="regLicense" placeholder="Örn: 1M-X94B2C3D4E5" />
+
+      <label>Twitch Auth-Token</label>
+      <input type="password" id="regToken" placeholder="Twitch gizli auth-token değeriniz" />
+      
+      <div class="f12-guide">
+        <b>Auth-Token Nasıl Alınır?</b><br/>
+        1. <b>twitch.tv</b>'ye gidin ve hesabınıza giriş yapın.<br/>
+        2. Klavyeden <b>F12</b> tuşuna basıp geliştirici seçeneklerini açın.<br/>
+        3. Üstten <b>Console</b> (Konsol) sekmesine tıklayın.<br/>
+        4. Aşağıdaki kodu yapıştırıp Enter'a basın. Ekrana tokenınız gelecektir, kopyalayıp üstteki kutuya yapıştırın:
+        <code>document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1]</code>
+      </div>
+
+      <button id="btnRegAction" class="btn" style="width:100%; font-size:1.1rem; padding:15px; background:var(--accent); color:#000;">Kayıt Ol ve Botu Başlat</button>
+    </div>
+  </div>
+
+  <script>
+    if(localStorage.getItem('login')) window.location.href = 'dashboard.html';
+
+    const $ = id => document.getElementById(id);
+
+    $('tabLogin').onclick = () => {
+      $('tabLogin').className = 'active'; $('tabRegister').className = '';
+      $('formLogin').className = 'auth-form active'; $('formRegister').className = 'auth-form';
+    };
+    $('tabRegister').onclick = () => {
+      $('tabRegister').className = 'active'; $('tabLogin').className = '';
+      $('formRegister').className = 'auth-form active'; $('formLogin').className = 'auth-form';
+    };
+
+    $('btnLoginAction').onclick = async () => {
+      const email = $('logEmail').value.trim();
+      const password = $('logPass').value;
+      if(!email || !password) return alert("Boş alan bırakmayın.");
+      
+      $('btnLoginAction').textContent = 'Bekleyin...';
+      try {
+        const r = await fetch('/api/login', {
+          method: 'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email, password })
+        });
+        const d = await r.json();
+        if(d.ok) {
+          localStorage.setItem('login', d.login);
+          window.location.href = 'dashboard.html';
+        } else {
+          alert(d.error);
+        }
+      } catch(e) { alert("Sunucu hatası."); }
+      $('btnLoginAction').textContent = 'Giriş Yap';
+    };
+
+    $('btnRegAction').onclick = async () => {
+      const email = $('regEmail').value.trim();
+      const password = $('regPass').value;
+      const licenseCode = $('regLicense').value.trim();
+      const token = $('regToken').value.trim();
+      
+      if(!email || !password || !licenseCode || !token) return alert("Boş alan bırakmayın.");
+      
+      $('btnRegAction').textContent = 'Hesap Kuruluyor...';
+      try {
+        const r = await fetch('/api/register', {
+          method: 'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email, password, licenseCode, token })
+        });
+        const d = await r.json();
+        if(d.ok) {
+          alert("Hesabınız başarıyla kuruldu ve botunuz başladı! Panele yönlendiriliyorsunuz.");
+          localStorage.setItem('login', d.login);
+          window.location.href = 'dashboard.html';
+        } else {
+          alert("Hata: " + d.error);
+        }
+      } catch(e) { alert("Sunucu hatası."); }
+      $('btnRegAction').textContent = 'Kayıt Ol ve Botu Başlat';
+    };
+  </script>
+</body>
+</html>

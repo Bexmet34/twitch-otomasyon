@@ -34,7 +34,7 @@ class Database {
   }
 
   async addUser(user) {
-    // user: { id, login, display_name, token, profile_image_url, isRunning }
+    // user: { id, login, display_name, token, profile_image_url, isRunning, email, password, expiresAt }
     const exists = this.data.users.find(u => u.login === user.login);
     if (exists) {
       // Güncelle
@@ -66,23 +66,23 @@ class Database {
     return this.data.licenses || [];
   }
 
-  async addLicense(code) {
+  async addLicense(code, durationDays) {
     if (!this.data.licenses) this.data.licenses = [];
-    this.data.licenses.push({ code, used: false, usedBy: null });
+    this.data.licenses.push({ code, durationDays, used: false, usedBy: null, createdAt: Date.now() });
     await this.save();
     return code;
   }
 
   async useLicense(code, login) {
-    if (!this.data.licenses) return false;
+    if (!this.data.licenses) return null;
     const lic = this.data.licenses.find(l => l.code === code && !l.used);
     if (lic) {
       lic.used = true;
       lic.usedBy = login;
       await this.save();
-      return true;
+      return lic.durationDays || 30; // Varsayılan 30 gün
     }
-    return false;
+    return null;
   }
 }
 

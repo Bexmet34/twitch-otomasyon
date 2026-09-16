@@ -30,11 +30,13 @@ async function fetchUsers() {
   } catch(e) {}
 }
 
-async function fetchLicenses() {
+function fetchLicenses() {
   try {
-    const res = await fetch('/api/admin/licenses', { headers: { 'x-admin-password': adminPass } });
-    const lics = await res.json();
-    $('licenseList').innerHTML = lics.map(l => `<div><code>${l.code}</code> - ${l.used ? `Kullanıldı (@${l.usedBy})` : 'Boşta'}</div>`).join('');
+    fetch('/api/admin/licenses', { headers: { 'x-admin-password': adminPass } })
+      .then(res => res.json())
+      .then(lics => {
+        $('licenseList').innerHTML = lics.map(l => `<div><code>${l.code}</code> (${l.durationDays || 30} Gün) - ${l.used ? `Kullanıldı (@${l.usedBy})` : 'Boşta'}</div>`).join('');
+      });
   } catch(e) {}
 }
 
@@ -121,10 +123,11 @@ async function deleteUser(login) {
 
 $('btnGenLicense').addEventListener('click', async () => {
   const amount = parseInt($('licenseCount').value) || 1;
+  const duration = parseInt($('licenseDuration').value) || 30;
   const res = await fetch('/api/admin/licenses', { 
      method: 'POST', 
      headers: { 'x-admin-password': adminPass, 'Content-Type': 'application/json' },
-     body: JSON.stringify({ amount })
+     body: JSON.stringify({ amount, duration })
   });
   const d = await res.json();
   if(d.ok) {
@@ -143,27 +146,6 @@ $('btnRestartServer').addEventListener('click', async () => {
   fetch('/api/admin/restart', { method: 'POST', headers: { 'x-admin-password': adminPass } });
   alert('Yeniden başlatılıyor...');
   setTimeout(()=> location.reload(), 3000);
-});
-
-$('btnAutoCode').addEventListener('click', () => {
-  const host = window.location.origin;
-  const code = `
-const lic = prompt('İtemSatış Lisans Kodunuzu Girin (Örn: ITEM-XXXX):');
-if(lic){
-  fetch('${host}/api/register', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1], licenseCode: lic.trim() })
-  }).then(r=>r.json()).then(d=>alert(d.ok ? '✅ Sistem Kuruldu! Artık panelden ilerlemeyi izleyebilirsiniz.' : '❌ Hata: ' + d.error)).catch(()=>alert('Hata!'));
-}`;
-  
-  prompt("Müşterinize vereceğiniz kurulum mesajı:", 
-`Merhaba! Bizi tercih ettiğiniz için teşekkürler. Kurulum çok basittir:
-1. Sitemize gidin: ${host}
-2. Sitedeki "Kayıt Ol" butonuna tıklayıp ordaki kurulum kodunu kopyalayın.
-3. twitch.tv'ye girip F12 ile Konsol (Console) sekmesini açın.
-4. Kodu yapıştırıp Enter'a basın, size İtemSatış Lisans Kodunuzu soracak.
-Lisans Kodunuz: (Buraya İtemSatış'ın otomatik verdiği kodu koyacaksınız)`
-  );
 });
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -25,8 +25,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ── CORS ──
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'https://www.twitch.tv');
-  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, x-admin-password, Authorization');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
@@ -43,7 +43,9 @@ function makeLogger(login) {
 }
 
 async function startBotForUser(user) {
-  if (bots.has(user.login)) return bots.get(user.login); 
+  if (bots.has(user.login)) return bots.get(user.login);
+  if (user.expiresAt && user.expiresAt < Date.now()) return; // Süresi bitmiş
+
   const logger = makeLogger(user.login);
   const bot = new TwitchDropsBot({ login: user.login, authToken: user.token, log: logger });
   bots.set(user.login, bot);
@@ -74,29 +76,29 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-
 // ── MÜŞTERİ (PUBLİC) API'LERİ ──
 
-// Müşterinin (Konsoldan) Kendi Token'ını Lisans ile Göndermesi
+// Müşteri Kayıt (Landing Page'den gelen istek)
 app.post('/api/register', async (req, res) => {
-  const { token, licenseCode } = req.body;
-  if (!token || !licenseCode) return res.status(400).json({ error: 'Token ve Lisans Kodu gereklidir.' });
+  const { email, password, token, licenseCode } = req.body;
+  if (!email || !password || !token || !licenseCode) return res.status(400).json({ error: 'E-posta, şifre, token ve Lisans Kodu gereklidir.' });
 
   try {
     const hRes = await fetch('https://id.twitch.tv/oauth2/validate', {
       headers: { 'Authorization': `OAuth ${token}` }
     }).catch(() => null);
 
-    if (!hRes || !hRes.ok) throw new Error('Geçersiz veya süresi dolmuş Twitch hesabı.');
+    if (!hRes || !hRes.ok) throw new Error('Geçersiz veya süresi dolmuş Twitch hesabı (Auth-Token hatalı).');
     const vData = await hRes.json();
     const client_id = vData.client_id;
     const user_id = vData.user_id;
+    const login = vData.login;
 
     // Lisansı kontrol et ve kullan
-    const used = await db.useLicense(licenseCode, vData.login);
-    if (!used) throw new Error('Geçersiz veya daha önce kullanılmış Lisans Kodu!');
+    const durationDays = await db.useLicense(licenseCode, login);
+    if (!durationDays) throw new Error('Geçersiz veya daha önce kullanılmış Lisans Kodu!');
 
-    let profile = { login: vData.login, display_name: vData.login };
+    let profile = { login: login, display_name: login };
     const uRes = await fetch(`https://api.twitch.tv/helix/users?id=${user_id}`, {
       headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': client_id }
     }).catch(() => null);
@@ -106,26 +108,49 @@ app.post('/api/register', async (req, res) => {
       if (uData.data && uData.data[0]) profile = uData.data[0];
     }
 
+    // Süre hesaplama
+    let user = db.getUser(login);
+    let currentExpires = user && user.expiresAt > Date.now() ? user.expiresAt : Date.now();
+    const newExpiresAt = currentExpires + (durationDays * 24 * 60 * 60 * 1000);
+
     const newUser = await db.addUser({
       id: user_id,
       login: profile.login,
       display_name: profile.display_name,
       profile_image_url: profile.profile_image_url || '',
-      token: token
+      token: token,
+      email: email.toLowerCase(),
+      password: Buffer.from(password).toString('base64'), // Çok basit şifreleme (demo için)
+      expiresAt: newExpiresAt
     });
 
-    res.json({ ok: true, user: newUser, message: 'Kullanıcı eklendi.' });
+    await startBotForUser(newUser);
+
+    res.json({ ok: true, login: newUser.login, expiresAt: newUser.expiresAt, message: 'Kayıt başarılı, botunuz başlatıldı.' });
     broadcast({ type: 'refresh_users' });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// Müşterinin Sadece Kendi İstatistiğini Görmesi
+// Müşteri Giriş (Login)
+app.post('/api/login', (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'E-posta ve şifre giriniz.' });
+  
+  const encPass = Buffer.from(password).toString('base64');
+  const user = db.getUsers().find(u => u.email === email.toLowerCase() && u.password === encPass);
+  
+  if (!user) return res.status(401).json({ error: 'Hatalı e-posta veya şifre.' });
+  
+  res.json({ ok: true, login: user.login });
+});
+
+// Müşterinin Kendi İstatistiğini Görmesi
 app.get('/api/mystats/:login', (req, res) => {
   const { login } = req.params;
   const user = db.getUser(login);
-  if (!user) return res.status(404).json({ error: 'Sistemde böyle bir kullanıcı yok. Satın alım yaptıysanız lütfen kaydolun.' });
+  if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
   
   const bot = bots.get(login);
   res.json({
@@ -133,6 +158,7 @@ app.get('/api/mystats/:login', (req, res) => {
     display_name: user.display_name,
     profile_image_url: user.profile_image_url,
     isRunning: user.isRunning,
+    expiresAt: user.expiresAt,
     stats: bot ? bot.getStats() : null
   });
 });
@@ -160,6 +186,8 @@ app.post('/api/admin/start/:login', requireAdmin, async (req, res) => {
   const { login } = req.params;
   const user = db.getUser(login);
   if (!user) return res.status(404).json({ error: 'Bulunamadı' });
+  if (user.expiresAt && user.expiresAt < Date.now()) return res.status(400).json({ error: 'Süresi bitmiş' });
+  
   await startBotForUser(user);
   res.json({ ok: true });
   broadcast({ type: 'refresh_users' });
@@ -177,21 +205,39 @@ app.post('/api/admin/restart', requireAdmin, (req, res) => {
   setTimeout(() => process.exit(1), 1000);
 });
 
-// Lisans Kodları
+// Lisans Kodları (Süreli)
 app.get('/api/admin/licenses', requireAdmin, (req, res) => {
   res.json(db.getLicenses());
 });
 
 app.post('/api/admin/licenses', requireAdmin, async (req, res) => {
   const amount = parseInt(req.body.amount) || 1;
+  const duration = parseInt(req.body.duration) || 30; // Varsayılan 30 Gün
+  
   const codes = [];
+  const prefix = duration === 7 ? '7D-' : duration === 30 ? '1M-' : duration === 90 ? '3M-' : 'XX-';
+  
   for (let i = 0; i < amount; i++) {
-    const code = 'ITEM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-    await db.addLicense(code);
+    const randomStr = Math.random().toString(36).substring(2, 13).toUpperCase().padEnd(11, '0');
+    const code = prefix + randomStr; // Örn: 1M-XXXXXXXXXXX (14 karakter)
+    await db.addLicense(code, duration);
     codes.push(code);
   }
   res.json({ ok: true, codes });
 });
+
+
+// ── LİSANS SÜRESİ KONTROLCÜSÜ (CRON) ──
+setInterval(async () => {
+  const users = db.getUsers();
+  for (const u of users) {
+    if (u.isRunning && u.expiresAt && u.expiresAt < Date.now()) {
+      const logger = makeLogger(u.login);
+      logger('error', `LİSANS SÜRESİ DOLDU! Bot durduruluyor... Lütfen lisansınızı yenileyin.`);
+      await stopBotForUser(u.login);
+    }
+  }
+}, 60000); // Her dakika kontrol et
 
 
 // ── BAŞLATMA ve WEBSOCKET ──
@@ -202,7 +248,11 @@ const server = app.listen(PORT, async () => {
   await initSharedBrowser();
   const users = db.getUsers();
   for (const u of users) {
-    if (u.isRunning) await startBotForUser(u);
+    if (u.isRunning && (!u.expiresAt || u.expiresAt > Date.now())) {
+      await startBotForUser(u);
+    } else if (u.isRunning && u.expiresAt && u.expiresAt < Date.now()) {
+      await stopBotForUser(u.login);
+    }
   }
 });
 
@@ -234,7 +284,6 @@ function broadcast(data) {
        } else if (data.type === 'log') {
           if (c.targetLogin === data.login) c.send(payload);
        } else if (data.type === 'all_stats') {
-          // all_stats içinde sadece kendi stat'ını yolla
           const myStat = data.data.find(x => x.login === c.targetLogin);
           if (myStat) c.send(JSON.stringify({ type: 'my_stat', data: myStat }));
        } else {

@@ -1,43 +1,18 @@
 const $ = id => document.getElementById(id);
 const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-// Sekme Geçişleri
-$('tabTrack').addEventListener('click', () => {
-  $('tabTrack').classList.add('active');
-  $('tabSetup').classList.remove('active');
-  $('panelTrack').classList.add('active');
-  $('panelSetup').classList.remove('active');
-});
+const loginSession = localStorage.getItem('login');
+if (!loginSession) {
+  window.location.href = 'login.html';
+} else {
+  // Hemen dashboard başlat
+  fetchStats(loginSession);
+  checkInterval = setInterval(() => fetchStats(loginSession), 10000);
+}
 
-$('tabSetup').addEventListener('click', () => {
-  $('tabSetup').classList.add('active');
-  $('tabTrack').classList.remove('active');
-  $('panelSetup').classList.add('active');
-  $('panelTrack').classList.remove('active');
-});
-
-// Otomatik Kod Oluşturma
-const host = window.location.origin;
-const setupCode = `
-const lic = prompt('İtemSatış Lisans Kodunuzu Girin (Örn: ITEM-XXXX):');
-if(lic){
-  fetch('${host}/api/register', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1], licenseCode: lic.trim() })
-  }).then(r=>r.json()).then(d=>alert(d.ok ? '✅ Sistem Kuruldu! Sitemize dönüp durumunuzu takip edebilirsiniz.' : '❌ Hata: ' + d.error)).catch(()=>alert('Hata!'));
-}`;
-$('setupCodeSnippet').value = setupCode.trim();
-
-$('btnCopyCode').addEventListener('click', () => {
-  $('setupCodeSnippet').select();
-  document.execCommand('copy');
-  const btn = $('btnCopyCode');
-  btn.textContent = 'Kopyalandı! ✔️';
-  btn.style.background = '#00cc66';
-  setTimeout(() => {
-    btn.textContent = 'Kodu Kopyala';
-    btn.style.background = '#00ff80';
-  }, 2000);
+$('btnLogout').addEventListener('click', () => {
+  localStorage.removeItem('login');
+  window.location.href = 'index.html';
 });
 
 // Takip Sistemi
@@ -176,19 +151,4 @@ function appendLog(log) {
   }
 }
 
-$('btnCheck').addEventListener('click', () => {
-  const login = $('usernameInput').value.trim().toLowerCase();
-  if (!login) return alert("Lütfen Twitch adınızı girin!");
-  
-  $('btnCheck').textContent = 'Sorgulanıyor...';
-  
-  fetchStats(login).then(() => {
-    $('btnCheck').textContent = 'Sorgula';
-    clearInterval(checkInterval);
-    checkInterval = setInterval(() => fetchStats(login), 10000);
-  });
-});
-
-$('usernameInput').addEventListener('keypress', e => {
-  if (e.key === 'Enter') $('btnCheck').click();
-});
+// Auto fetch removed from bottom, placed at the top.

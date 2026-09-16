@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Twitch Drops – Müşteri Paneli</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { min-height: 100vh; padding: 20px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+    .tabs button { flex: 1; padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: white; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .tabs button.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    
+    .panel { display: none; background: rgba(20,20,30,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 30px; }
+    .panel.active { display: block; }
+
+    /* Takip Ekranı */
+    .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+    .input-group input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: white; font-size: 1rem; }
+    
+    .header-info { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .uc-avatar { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--accent); }
+    .uc-status { font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; background: rgba(255,255,255,0.1); display: inline-block; margin-top:5px; }
+    .uc-status.online { background: rgba(0, 255, 128, 0.2); color: #00ff80; }
+
+    /* İstatistikler (Eski tasarım) */
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
+    .stat-box { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+    .stat-box .val { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: bold; color: var(--accent); margin-top: 5px; }
+
+    /* Envanter */
+    .inventory-section { margin-bottom: 25px; }
+    .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; }
+    .drop-item { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .drop-item img { width: 100%; height: 100px; object-fit: contain; border-radius: 6px; background: rgba(0,0,0,0.5); }
+    .drop-title { font-size: 0.9rem; font-weight: 500; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .drop-progress { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+    .drop-progress-fill { height: 100%; background: var(--accent); }
+
+    /* Log Terminal */
+    .terminal { background: #0a0a0f; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; height: 250px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.6; }
+    .log-line { display: flex; gap: 10px; margin-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.02); padding-bottom: 5px; }
+    .log-time { color: #666; }
+    .log-level { font-weight: 600; width: 50px; }
+    .log-msg { color: #ddd; flex: 1; }
+    .level-info { color: #00ff80; }
+    .level-warn { color: #ffaa00; }
+    .level-error { color: #ff4545; }
+    .level-success { color: #00d2ff; }
+
+    /* Kayıt Ekranı */
+    .setup-box { background: rgba(255,255,255,0.02); padding: 20px; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.2); }
+    .setup-code { width: 100%; height: 140px; background: #000; color: #0f0; padding: 15px; font-family: 'JetBrains Mono', monospace; border-radius: 8px; border: 1px solid #333; margin: 15px 0; resize: none; }
+  </style>
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+
+  <div class="container">
+    
+    <div class="brand" style="margin-bottom: 30px; justify-content: center;">
+      <div class="brand-text">
+        <span class="brand-name">Twitch Drops</span>
+        <span class="brand-sub">Otonom Toplama Sistemi</span>
+      </div>
+    </div>
+
+    <div class="tabs" style="display:flex; justify-content: space-between; align-items:center;">
+      <h2 style="margin:0;">📊 Kontrol Paneli</h2>
+      <button id="btnLogout" class="btn" style="background:#ff4545; border:none; padding:8px 20px;">Çıkış Yap</button>
+    </div>
+
+    <!-- TAKİP PANELİ -->
+    <div id="panelTrack" class="panel active">
+      
+      <div id="fullDashboard" style="display:none; margin-top: 10px;">
+        
+        <div class="header-info">
+          <img id="uiAvatar" class="uc-avatar" src="" />
+          <div>
+            <h2 id="uiName" style="margin: 0; font-size: 1.5rem;">Yükleniyor...</h2>
+            <div id="uiStatus" class="uc-status">Durum Yükleniyor</div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div style="color:var(--text-muted); font-size:0.9rem;">İzlenen Kanal</div>
+            <div class="val" id="uiChannel">—</div>
+          </div>
+          <div class="stat-box">
+            <div style="color:var(--text-muted); font-size:0.9rem;">Alınan Kutu</div>
+            <div class="val" id="uiClaimed">0</div>
+          </div>
+          <div class="stat-box">
+            <div style="color:var(--text-muted); font-size:0.9rem;">Aktif Süre</div>
+            <div class="val" id="uiUptime">00:00</div>
+          </div>
+        </div>
+
+        <div class="inventory-section">
+          <h3 style="margin-bottom: 10px;">Envanter Durumu</h3>
+          <div class="inventory-grid" id="uiInventory">
+            <!-- Dinamik dolacak -->
+          </div>
+        </div>
+
+        <div>
+          <h3 style="margin-bottom: 10px;">Canlı Loglar</h3>
+          <div class="terminal" id="terminal">
+            <div style="color: #666; text-align: center; margin-top: 100px;">Sisteme bağlanıldı, canlı veriler bekleniyor...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  
+  <script src="app.js"></script>
+</body>
+</html>

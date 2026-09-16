@@ -3,151 +3,78 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Twitch Drops – Müşteri Paneli</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <title>Twitch Drops SaaS – Otomatik Toplama Sistemi</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet" />
   <style>
-    body { min-height: 100vh; padding: 20px; }
-    .container { max-width: 900px; margin: 0 auto; }
+    :root { --accent: #00ff80; --bg: #050508; --glass: rgba(255,255,255,0.03); }
+    body, html { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: #fff; overflow-x: hidden; }
     
-    .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-    .tabs button { flex: 1; padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: white; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .tabs button.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    header { display: flex; justify-content: space-between; padding: 20px 50px; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .logo { font-size: 1.5rem; font-weight: 800; color: var(--accent); }
+    .nav-links a { color: white; text-decoration: none; margin-left: 20px; font-weight: 500; transition: color 0.3s; }
+    .nav-links a:hover { color: var(--accent); }
+    .nav-links .btn { background: var(--accent); color: #000; padding: 8px 20px; border-radius: 20px; font-weight: 600; }
     
-    .panel { display: none; background: rgba(20,20,30,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 30px; }
-    .panel.active { display: block; }
+    .hero { height: 80vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: radial-gradient(circle at center, rgba(0,255,128,0.1) 0%, transparent 60%); }
+    .hero h1 { font-size: 4rem; margin-bottom: 10px; }
+    .hero p { font-size: 1.2rem; color: #aaa; max-width: 600px; margin-bottom: 40px; }
+    .hero-btns { display: flex; gap: 20px; }
+    .hero-btn { padding: 15px 40px; font-size: 1.2rem; border-radius: 30px; text-decoration: none; font-weight: 600; transition: transform 0.2s; }
+    .btn-primary { background: var(--accent); color: #000; box-shadow: 0 0 20px rgba(0,255,128,0.4); }
+    .btn-secondary { background: var(--glass); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+    .hero-btn:hover { transform: scale(1.05); }
 
-    /* Takip Ekranı */
-    .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
-    .input-group input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: white; font-size: 1rem; }
-    
-    .header-info { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    .uc-avatar { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--accent); }
-    .uc-status { font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; background: rgba(255,255,255,0.1); display: inline-block; margin-top:5px; }
-    .uc-status.online { background: rgba(0, 255, 128, 0.2); color: #00ff80; }
+    .features { padding: 80px 50px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+    .feature-card { background: var(--glass); padding: 40px; border-radius: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+    .feature-card h3 { color: var(--accent); font-size: 1.5rem; }
+    .feature-card p { color: #888; line-height: 1.6; }
 
-    /* İstatistikler (Eski tasarım) */
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
-    .stat-box { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
-    .stat-box .val { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: bold; color: var(--accent); margin-top: 5px; }
-
-    /* Envanter */
-    .inventory-section { margin-bottom: 25px; }
-    .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; }
-    .drop-item { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-    .drop-item img { width: 100%; height: 100px; object-fit: contain; border-radius: 6px; background: rgba(0,0,0,0.5); }
-    .drop-title { font-size: 0.9rem; font-weight: 500; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .drop-progress { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
-    .drop-progress-fill { height: 100%; background: var(--accent); }
-
-    /* Log Terminal */
-    .terminal { background: #0a0a0f; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; height: 250px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.6; }
-    .log-line { display: flex; gap: 10px; margin-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.02); padding-bottom: 5px; }
-    .log-time { color: #666; }
-    .log-level { font-weight: 600; width: 50px; }
-    .log-msg { color: #ddd; flex: 1; }
-    .level-info { color: #00ff80; }
-    .level-warn { color: #ffaa00; }
-    .level-error { color: #ff4545; }
-    .level-success { color: #00d2ff; }
-
-    /* Kayıt Ekranı */
-    .setup-box { background: rgba(255,255,255,0.02); padding: 20px; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.2); }
-    .setup-code { width: 100%; height: 140px; background: #000; color: #0f0; padding: 15px; font-family: 'JetBrains Mono', monospace; border-radius: 8px; border: 1px solid #333; margin: 15px 0; resize: none; }
+    .footer { text-align: center; padding: 30px; border-top: 1px solid rgba(255,255,255,0.05); color: #555; }
   </style>
 </head>
 <body>
-  <div class="bg-orbs" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
 
-  <div class="container">
-    
-    <div class="brand" style="margin-bottom: 30px; justify-content: center;">
-      <div class="brand-text">
-        <span class="brand-name">Twitch Drops</span>
-        <span class="brand-sub">Otonom Toplama Sistemi</span>
-      </div>
+  <header>
+    <div class="logo">Twitch Drops SaaS</div>
+    <div class="nav-links">
+      <a href="#features">Özellikler</a>
+      <a href="https://itemsatis.com" target="_blank">Paket Satın Al</a>
+      <a href="login.html" class="btn">Giriş Yap / Kayıt Ol</a>
     </div>
+  </header>
 
-    <div class="tabs">
-      <button id="tabTrack" class="active">📊 Botumu İzle</button>
-      <button id="tabSetup">🧩 İtemSatış'tan Yeni Aldım (Kurulum)</button>
+  <section class="hero">
+    <h1>Sen Uyu, <span style="color:var(--accent);">Kutular Gelsin.</span></h1>
+    <p>Bilgisayarınızı açık tutmanıza gerek yok. İtemSatış'tan lisansınızı alın, hesabınızı sisteme bağlayın, gerisini 7/24 bulut sunucularımızdaki otonom yapay zeka halletsin.</p>
+    <div class="hero-btns">
+      <a href="login.html" class="hero-btn btn-primary">Sisteme Giriş Yap</a>
+      <a href="https://itemsatis.com" target="_blank" class="hero-btn btn-secondary">Lisans Satın Al</a>
     </div>
+  </section>
 
-    <!-- TAKİP PANELİ -->
-    <div id="panelTrack" class="panel active">
-      <h3 style="margin-bottom: 15px;">Durum Sorgula</h3>
-      <div class="input-group">
-        <input type="text" id="usernameInput" placeholder="Twitch Kullanıcı Adınız (Örn: melyrionn)" />
-        <button class="btn" id="btnCheck">Sorgula</button>
-      </div>
-
-      <div id="fullDashboard" style="display:none; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
-        
-        <div class="header-info">
-          <img id="uiAvatar" class="uc-avatar" src="" />
-          <div>
-            <h2 id="uiName" style="margin: 0; font-size: 1.5rem;">Yükleniyor...</h2>
-            <div id="uiStatus" class="uc-status">Durum Yükleniyor</div>
-          </div>
-        </div>
-
-        <div class="stats-grid">
-          <div class="stat-box">
-            <div style="color:var(--text-muted); font-size:0.9rem;">İzlenen Kanal</div>
-            <div class="val" id="uiChannel">—</div>
-          </div>
-          <div class="stat-box">
-            <div style="color:var(--text-muted); font-size:0.9rem;">Alınan Kutu</div>
-            <div class="val" id="uiClaimed">0</div>
-          </div>
-          <div class="stat-box">
-            <div style="color:var(--text-muted); font-size:0.9rem;">Aktif Süre</div>
-            <div class="val" id="uiUptime">00:00</div>
-          </div>
-        </div>
-
-        <div class="inventory-section">
-          <h3 style="margin-bottom: 10px;">Envanter Durumu</h3>
-          <div class="inventory-grid" id="uiInventory">
-            <!-- Dinamik dolacak -->
-          </div>
-        </div>
-
-        <div>
-          <h3 style="margin-bottom: 10px;">Canlı Loglar</h3>
-          <div class="terminal" id="terminal">
-            <div style="color: #666; text-align: center; margin-top: 100px;">Sisteme bağlanıldı, canlı veriler bekleniyor...</div>
-          </div>
-        </div>
-
-      </div>
+  <section id="features" class="features">
+    <div class="feature-card">
+      <h3>🚀 7/24 Bulut Otomasyonu</h3>
+      <p>Kendi bilgisayarınızı ve internetinizi tüketmeyin. Sisteme lisansınızı girin, botunuz anında bulut sunucularımızda çalışmaya başlasın.</p>
     </div>
-
-    <!-- KURULUM PANELİ -->
-    <div id="panelSetup" class="panel">
-      <h2 style="margin-bottom: 15px;">Otomatik Kurulum</h2>
-      <p style="color: #aaa; margin-bottom: 20px;">İtemSatış üzerinden sistemimizi satın aldığınız için teşekkürler. Botunuzu başlatmak sadece 1 dakikanızı alır.</p>
-      
-      <div class="setup-box">
-        <h3 style="color: var(--accent); margin-bottom: 10px;">Adım Adım Kurulum:</h3>
-        <ol style="line-height: 1.8; color: #ddd; margin-left: 20px;">
-          <li>Aşağıdaki <b>Kurulum Kodunu</b> kopyalayın.</li>
-          <li>Bilgisayarınızdan <a href="https://twitch.tv" target="_blank" style="color:#00ff80;">twitch.tv</a> adresine gidin ve hesabınıza giriş yapın.</li>
-          <li>Klavyenizden <b>F12</b> tuşuna basarak Geliştirici Seçenekleri'ni açın.</li>
-          <li>Üst menüden <b>Console (Konsol)</b> sekmesine tıklayın.</li>
-          <li>Kopyaladığınız kodu o siyah/beyaz boşluğa yapıştırıp <b>Enter</b>'a basın.</li>
-          <li>Karşınıza çıkan küçük pencereye İtemSatış'ın size verdiği <b>Lisans Kodunu (Örn: ITEM-XXXX)</b> yazın ve onaylayın.</li>
-        </ol>
-
-        <textarea class="setup-code" id="setupCodeSnippet" readonly></textarea>
-        <button class="btn" id="btnCopyCode" style="width: 100%; background: #00ff80; color: #000; font-weight: bold;">Kodu Kopyala</button>
-      </div>
-      
-      <p style="text-align: center; margin-top: 20px; font-size: 0.9rem; color: #666;">Kurulum bittikten sonra "Botumu İzle" sekmesinden Twitch adınızı yazarak durumunuzu takip edebilirsiniz.</p>
+    <div class="feature-card">
+      <h3>⏳ Zamanlı Lisans Sistemi</h3>
+      <p>7 Günlük, 1 Aylık veya 3 Aylık paketlerden birini seçin. Süreniz boyunca sınırsız Twitch Drop kasın.</p>
     </div>
+    <div class="feature-card">
+      <h3>📊 Kapsamlı Yönetim Paneli</h3>
+      <p>Giriş yaptıktan sonra detaylı kontrol paneliniz üzerinden canlı logları, güncel envanterinizi ve toplanan hediyeleri saniye saniye izleyin.</p>
+    </div>
+  </section>
 
+  <div class="footer">
+    &copy; 2026 Twitch Drops SaaS. Tüm Hakları Saklıdır.
   </div>
-  
-  <script src="app.js"></script>
+
+  <script>
+    if(localStorage.getItem('login')) {
+      document.querySelector('.nav-links').innerHTML += '<a href="dashboard.html" style="color:#00ff80; border-bottom:1px solid #00ff80;">Panele Git</a>';
+    }
+  </script>
 </body>
 </html>
