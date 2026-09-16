@@ -1,101 +1,155 @@
 // ============================================================
-//  server.js – Express + WebSocket Yönetim Sunucusu
+//  Twitch Drops Bot – Çoklu Müşteri (SaaS) Yönetim Sunucusu (server.js)
 // ============================================================
 
-import express            from 'express';
+import express from 'express';
 import { WebSocketServer } from 'ws';
-import { createServer }    from 'http';
-import { fileURLToPath }   from 'url';
-import path                from 'path';
-import 'dotenv/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import { TwitchDropsBot, initSharedBrowser } from './bot.js';
+import { db } from './db.js';
 
-import { TwitchDropsBot } from './bot.js';
+dotenv.config();
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT      = process.env.PORT || 3000;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const app    = express();
-const server = createServer(app);
-const wss    = new WebSocketServer({ server });
+const app = express();
+const PORT = process.env.PORT || 4000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── WebSocket bağlı istemciler ───────────────────────────────
-const clients = new Set();
+// ── BOT MANAGER ───────────────────────────────────────────────
+const bots = new Map(); // login -> TwitchDropsBot instance
 
-wss.on('connection', ws => {
-  clients.add(ws);
-  broadcast({ type: 'stats', data: bot ? bot.getStats() : { running: false } });
-  ws.on('close', () => clients.delete(ws));
-});
-
-function broadcast(obj) {
-  const msg = JSON.stringify(obj);
-  for (const ws of clients) {
-    if (ws.readyState === 1) ws.send(msg);
-  }
-}
-
-// ── Log yayıncısı ────────────────────────────────────────────
-function makeLogger() {
+function makeLogger(login) {
   return (level, message) => {
-    const entry = { type: 'log', level, message, time: new Date().toLocaleTimeString('tr-TR') };
-    broadcast(entry);
-    const sym = { info: 'ℹ️', warn: '⚠️', error: '❌', success: '✅' };
-    console.log(`[${entry.time}] ${sym[level] || '•'} ${message}`);
+    const time = new Date().toLocaleTimeString('tr-TR');
+    console.log(`[${time}] [${login}] [${level.toUpperCase()}] ${message}`);
+    broadcast({ type: 'log', login, level, message, time });
   };
 }
 
-// ── Bot instance ─────────────────────────────────────────────
-let bot              = null;
-let currentAuthToken = null;   // /api/userinfo için token önbelleği
+async function startBotForUser(user) {
+  if (bots.has(user.login)) return bots.get(user.login); // Zaten çalışıyor
 
-// İstatistik yayını (5 sn'de bir)
-setInterval(() => {
-  if (bot) broadcast({ type: 'stats', data: bot.getStats() });
-}, 5_000);
+  const logger = makeLogger(user.login);
+  const bot = new TwitchDropsBot({ login: user.login, authToken: user.token, log: logger });
+  bots.set(user.login, bot);
+  
+  await db.updateStatus(user.login, true);
+  
+  // Arka planda başlat
+  bot.start().catch(err => {
+    logger('error', `Bot başlatılırken hata: ${err.message}`);
+    bot.stop();
+    bots.delete(user.login);
+    db.updateStatus(user.login, false);
+  });
+  
+  return bot;
+}
 
-// ── REST API ─────────────────────────────────────────────────
-
-// Bot başlat
-app.post('/api/start', async (req, res) => {
-  const { authToken } = req.body;
-  if (!authToken || authToken.trim().length < 10)
-    return res.status(400).json({ error: 'Geçerli bir auth-token giriniz.' });
-  if (bot && bot.running)
-    return res.status(409).json({ error: 'Bot zaten çalışıyor.' });
-
-  currentAuthToken = authToken.trim();
-  bot = new TwitchDropsBot({ authToken: currentAuthToken, log: makeLogger() });
-  bot.start();
-
-  res.json({ ok: true, message: 'Bot başlatıldı.' });
-});
-
-// Bot durdur
-app.post('/api/stop', async (req, res) => {
-  if (!bot || !bot.running)
-    return res.status(409).json({ error: 'Bot zaten durmuş.' });
-  await bot.stop();
-  res.json({ ok: true, message: 'Bot durduruldu.' });
-});
-
-
-
-// Zorla sıfırla
-app.post('/api/reset', async (req, res) => {
-  try {
-    if (bot) {
-      bot.running = false;
-      await bot.stop().catch(() => {});
-    }
-    bot = null;
-    broadcast({ type: 'stats', data: { running: false, claimedCount: 0, startedAt: null, currentChannel: null, dropProgress: 0, dropName: null, nextCheckAt: null, inventory: [] } });
-    res.json({ ok: true, message: 'Bot sıfırlandı.' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+async function stopBotForUser(login) {
+  const bot = bots.get(login);
+  if (bot) {
+    bot.running = false;
+    await bot.stop().catch(() => {});
+    bots.delete(login);
   }
+  await db.updateStatus(login, false);
+}
+
+// ── API ENDPOINTLERİ ─────────────────────────────────────────
+
+// Tüm kullanıcıları ve durumlarını getir
+app.get('/api/users', (req, res) => {
+  const users = db.getUsers().map(u => {
+    const bot = bots.get(u.login);
+    return {
+      ...u,
+      stats: bot ? bot.getStats() : null
+    };
+  });
+  res.json(users);
+});
+
+// Yeni Kullanıcı Ekle (Token ile)
+app.post('/api/users', async (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.status(400).json({ error: 'Token gereklidir.' });
+
+  try {
+    // Token'ı Twitch üzerinden doğrula ve profil bilgilerini al
+    const hRes = await fetch('https://id.twitch.tv/oauth2/validate', {
+      headers: { 'Authorization': `OAuth ${token}` }
+    }).catch(() => null);
+
+    if (!hRes || !hRes.ok) throw new Error('Geçersiz veya süresi dolmuş auth-token.');
+    const vData = await hRes.json();
+    const client_id = vData.client_id;
+    const user_id = vData.user_id;
+
+    let profile = { login: vData.login, display_name: vData.login };
+
+    // Kullanıcı detaylarını çek
+    const uRes = await fetch(`https://api.twitch.tv/helix/users?id=${user_id}`, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': client_id }
+    }).catch(() => null);
+
+    if (uRes && uRes.ok) {
+      const uData = await uRes.json();
+      if (uData.data && uData.data[0]) {
+        profile = uData.data[0];
+      }
+    }
+
+    const newUser = await db.addUser({
+      id: user_id,
+      login: profile.login,
+      display_name: profile.display_name,
+      profile_image_url: profile.profile_image_url || '',
+      token: token
+    });
+
+    res.json({ ok: true, user: newUser, message: 'Kullanıcı eklendi.' });
+    broadcast({ type: 'refresh_users' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Kullanıcı Sil
+app.delete('/api/users/:login', async (req, res) => {
+  const { login } = req.params;
+  await stopBotForUser(login);
+  await db.removeUser(login);
+  res.json({ ok: true, message: 'Kullanıcı silindi.' });
+  broadcast({ type: 'refresh_users' });
+});
+
+// Bot Başlat
+app.post('/api/start/:login', async (req, res) => {
+  const { login } = req.params;
+  const user = db.getUser(login);
+  if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+  if (bots.has(login)) return res.status(400).json({ error: 'Bot zaten çalışıyor.' });
+
+  await startBotForUser(user);
+  res.json({ ok: true, message: 'Bot başlatıldı.' });
+  broadcast({ type: 'refresh_users' });
+});
+
+// Bot Durdur
+app.post('/api/stop/:login', async (req, res) => {
+  const { login } = req.params;
+  if (!bots.has(login)) return res.status(400).json({ error: 'Bot zaten çalışmıyor.' });
+
+  await stopBotForUser(login);
+  res.json({ ok: true, message: 'Bot durduruldu.' });
+  broadcast({ type: 'refresh_users' });
 });
 
 // Sunucuyu (PM2) Yeniden Başlat
@@ -104,93 +158,48 @@ app.post('/api/restart-server', (req, res) => {
   setTimeout(() => process.exit(1), 1000);
 });
 
-// Durum sorgulama
-app.get('/api/status', (req, res) => {
-  res.json({
-    running: bot?.running ?? false,
-    stats:   bot?.getStats() ?? {},
-  });
-});
+// ── BAŞLATMA ve WEBSOCKET ────────────────────────────────────
 
-// Twitch kullanıcı bilgisi (proxy – CORS bypass)
-app.get('/api/userinfo', async (req, res) => {
-  const token = (req.query.token || currentAuthToken || '').trim();
-  if (!token) return res.status(400).json({ error: 'Token gerekli' });
+const server = app.listen(PORT, async () => {
+  console.log(`[SİSTEM] Web yönetim paneli http://localhost:${PORT} üzerinde çalışıyor.`);
+  
+  // Veritabanını yükle
+  await db.load();
+  console.log(`[SİSTEM] Veritabanı yüklendi. Kayıtlı kullanıcı: ${db.getUsers().length}`);
 
-  try {
-    // Adım 1: Token'ı doğrula (Client-ID gerekmez)
-    const valRes = await fetch('https://id.twitch.tv/oauth2/validate', {
-      headers: { 'Authorization': `OAuth ${token}` },
-    });
+  // Paylaşımlı tarayıcıyı başlat
+  await initSharedBrowser();
 
-    if (!valRes.ok) {
-      const err = await valRes.json().catch(() => ({}));
-      return res.status(401).json({
-        error: err.message || 'Token geçersiz veya süresi dolmuş. Twitch\'ten yeni auth-token kopyala.',
-      });
+  // Otomatik başlatma (Önceden çalışanları geri aç)
+  const users = db.getUsers();
+  for (const u of users) {
+    if (u.isRunning) {
+      console.log(`[SİSTEM] ${u.login} botu otomatik başlatılıyor...`);
+      await startBotForUser(u);
     }
-
-    const { client_id, user_id, login } = await valRes.json();
-
-    // Adım 2: GQL ile tam profil bilgisi (avatar dahil)
-    const gqlRes = await fetch('https://gql.twitch.tv/gql', {
-      method:  'POST',
-      headers: {
-        'Authorization': `OAuth ${token}`,
-        'Client-Id':     client_id,
-        'Content-Type':  'application/json',
-      },
-      body: JSON.stringify({
-        query: `{ currentUser { id login displayName profileImageURL(width:300) createdAt roles { isPartner isAffiliate } } }`,
-      }),
-    });
-
-    let profile = { login, display_name: login, id: user_id };
-
-    if (gqlRes.ok) {
-      const gqlData = await gqlRes.json().catch(() => []);
-      const user    = Array.isArray(gqlData) ? gqlData[0]?.data?.currentUser : null;
-      if (user) {
-        profile = {
-          id:                user_id,
-          login:             user.login             || login,
-          display_name:      user.displayName       || login,
-          profile_image_url: user.profileImageURL   || null,
-          view_count:        user.channel?.views    || 0,
-          broadcaster_type:  user.roles?.isPartner  ? 'partner'
-                           : user.roles?.isAffiliate ? 'affiliate' : '',
-          created_at:        user.createdAt         || null,
-        };
-      }
-    }
-
-    // GQL başarısız olduysa helix'i dene
-    if (!profile.profile_image_url) {
-      const hRes = await fetch(
-        `https://api.twitch.tv/helix/users?id=${user_id}`,
-        { headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': client_id } }
-      ).catch(() => null);
-      if (hRes?.ok) {
-        const hData = await hRes.json().catch(() => ({}));
-        const u     = hData.data?.[0];
-        if (u) profile = { ...profile, ...u };
-      }
-    }
-
-    currentAuthToken = token;
-    res.json(profile);
-
-  } catch (err) {
-    res.status(500).json({ error: `Sunucu hatası: ${err.message}` });
   }
 });
 
-// ── Sunucu ───────────────────────────────────────────────────
-server.listen(PORT, () => {
-  console.log(`
-  ╔══════════════════════════════════════════╗
-  ║   🎮 Twitch Drops Bot – Yönetim Paneli  ║
-  ║   🌐 http://localhost:${PORT}              ║
-  ╚══════════════════════════════════════════╝
-  `);
+const wss = new WebSocketServer({ server });
+const clients = new Set();
+
+wss.on('connection', ws => {
+  clients.add(ws);
+  ws.on('close', () => clients.delete(ws));
 });
+
+function broadcast(data) {
+  const payload = JSON.stringify(data);
+  for (const c of clients) {
+    if (c.readyState === 1) c.send(payload);
+  }
+}
+
+// İstatistikleri düzenli olarak panele gönder
+setInterval(() => {
+  const statsUpdate = db.getUsers().map(u => {
+    const bot = bots.get(u.login);
+    return { login: u.login, isRunning: u.isRunning, stats: bot ? bot.getStats() : null };
+  });
+  broadcast({ type: 'all_stats', data: statsUpdate });
+}, 5000);

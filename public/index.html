@@ -3,218 +3,72 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Twitch Drops Bot – Albion Online</title>
-  <meta name="description" content="Twitch Drops otomatik toplayıcı bot yönetim paneli" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <title>Twitch Drops SaaS – Yönetim Paneli</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
   <link rel="stylesheet" href="style.css" />
+  <style>
+    /* SaaS Özel Tasarım Eklemeleri */
+    .saas-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .add-user-box { display: flex; gap: 10px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+    .add-user-box input { flex: 1; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px; border-radius: 6px; }
+    .users-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+    
+    .user-card { background: rgba(20,20,30,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 15px; position: relative; }
+    .uc-header { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; margin-bottom: 12px; }
+    .uc-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+    .uc-info { flex: 1; }
+    .uc-name { font-weight: 600; font-size: 1.1rem; }
+    .uc-login { color: var(--text-muted); font-size: 0.85rem; }
+    .uc-status { font-size: 0.8rem; padding: 3px 8px; border-radius: 20px; background: rgba(255,255,255,0.1); }
+    .uc-status.online { background: rgba(0, 255, 128, 0.2); color: #00ff80; }
+    
+    .uc-stats { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 0.9rem; }
+    .uc-stat-col { display: flex; flex-direction: column; }
+    .uc-stat-val { font-family: 'JetBrains Mono', monospace; font-weight: bold; color: var(--accent); }
+    
+    .uc-actions { display: flex; gap: 8px; }
+    .uc-actions button { flex: 1; padding: 8px; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; }
+    .btn-play { background: rgba(0, 255, 128, 0.2); color: #00ff80; }
+    .btn-stop { background: rgba(255, 69, 69, 0.2); color: #ff4545; }
+    .btn-del { background: transparent; color: #ff4545; flex: 0 0 auto !important; border: 1px solid rgba(255,69,69,0.3) !important; }
+    
+    .uc-progress { margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); }
+    .uc-progress-bar { width: 100%; height: 6px; background: rgba(0,0,0,0.3); border-radius: 3px; margin-top: 4px; overflow: hidden; }
+    .uc-progress-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; }
+  </style>
 </head>
 <body>
+  <div class="bg-orbs" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
 
-  <!-- ── Arka plan ───────────────────── -->
-  <div class="bg-orbs" aria-hidden="true">
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
-  </div>
-
-  <!-- ── Token Panel kaldırıldı (Artık Tarayıcı Girişi Var) ── -->
-
-  <!-- ── Ana Uygulama ─────────────────── -->
-  <div class="app-wrap">
-
-    <!-- TOP BAR -->
+  <div class="app-wrap" style="max-width: 1200px;">
+    
     <header class="topbar glass">
       <div class="brand">
-        <svg class="twitch-logo" viewBox="0 0 24 28" fill="none">
-          <path d="M2.149 0L0 4.5V24H6V28H10.5L14.5 24H20L24 20V0H2.149ZM22 19L18 23H13L9 27V23H4V2H22V19Z" fill="#9147FF"/>
-          <path d="M18 7H16V13H18V7ZM13 7H11V13H13V7Z" fill="#9147FF"/>
-        </svg>
         <div class="brand-text">
-          <span class="brand-name">Twitch Drops Bot</span>
-          <span class="brand-sub">Albion Online</span>
+          <span class="brand-name">Twitch SaaS</span>
+          <span class="brand-sub">Multi-Tenant Yönetimi</span>
         </div>
       </div>
-
       <div class="topbar-right">
-        <div class="status-pill" id="statusPill">
-          <span class="sdot" id="statusDot"></span>
-          <span id="statusText">Beklemede</span>
-        </div>
-        <!-- Tarayıcı Girişi header butonunu kaldırdık (Overlay içinde olacak) -->
+        <button class="reset-link" id="btnRestartServer" style="color: #ff4d4d; border: 1px solid #ff4d4d; padding: 6px 12px; border-radius: 6px;">⚡ Sunucuyu Yeniden Başlat</button>
       </div>
     </header>
 
-    <!-- DASHBOARD GRİD -->
-    <main class="dashboard">
-
-      <!-- HESAP KARTI -->
-      <section class="card glass" id="accountCard">
-        <div class="card-label">Twitch Hesabı</div>
-
-        <div class="acct-empty" id="acctEmpty">
-          <div class="acct-empty-icon">🌐</div>
-          <p>Henüz Twitch'e bağlanmadınız.<br/><button class="inline-btn" id="acctLoginLink">Tarayıcı ile Giriş Yap →</button></p>
-        </div>
-
-        <div class="acct-info" id="acctInfo" style="display:none;">
-          <div class="avatar-wrap">
-            <img class="avatar" id="userAvatar" src="" alt="Profil fotoğrafı" />
-            <div class="avatar-ring"></div>
-          </div>
-          <div class="user-display" id="userDisplayName">—</div>
-          <div class="user-login"   id="userLogin">@—</div>
-          <div class="user-badges">
-            <span class="ubadge purple" id="userType">normal</span>
-          </div>
-          <button class="btn btn-logout" id="btnLogout" style="margin-top: 15px; font-size: 0.75rem; padding: 6px 12px; background: rgba(255,69,69,0.15); color: var(--red); border: 1px solid rgba(255,69,69,0.3); border-radius: 6px;">Çıkış Yap</button>
-        </div>
-      </section>
-
-      <!-- KONTROL KARTI -->
-      <section class="card glass">
-        <div class="card-label">Bot Kontrolü</div>
-
-        <div class="ctrl-stats">
-          <div class="cstat thumb-stat">
-            <div class="thumb-wrap" id="streamThumbWrap" style="display:none;">
-              <img src="" id="streamThumb" alt="Yayıncı" class="stream-thumb" />
-              <div class="live-badge">CANLI</div>
-            </div>
-            <span class="cstat-val channel-val" id="statChannel">—</span>
-            <span class="cstat-lbl">Aktif Kanal</span>
-          </div>
-          <div class="cstat">
-            <span class="cstat-val green-glow" id="statClaimed">0</span>
-            <span class="cstat-lbl">Toplanan Drop</span>
-          </div>
-          <div class="cstat">
-            <span class="cstat-val" id="statUptime">—</span>
-            <span class="cstat-lbl">Çalışma Süresi</span>
-          </div>
-        </div>
-
-        <div class="ctrl-btns">
-          <button class="btn btn-start" id="btnStart">
-            <span>▶</span> Başlat
-          </button>
-          <button class="btn btn-stop" id="btnStop" disabled>
-            <span>⏹</span> Durdur
-          </button>
-        </div>
-
-        <div class="ctrl-footer">
-          <button class="reset-link" id="btnReset">🔄 Zorla Sıfırla</button>
-          <button class="reset-link" id="btnRestartServer" style="color: #ff4d4d; margin-left: 15px;">⚡ Sunucuyu Yeniden Başlat</button>
-        </div>
-
-        <div class="ctrl-alert" id="alertBox" style="display:none;"></div>
-      </section>
-
-      <!-- DROP İLERLEMESİ -->
-      <section class="card glass">
-        <div class="card-label">Drop İlerlemesi</div>
-
-        <div class="drop-empty" id="dropEmpty">
-          <div class="drop-empty-icon">🎁</div>
-          <p>Bot başlatıldığında<br/>ilerleme burada görünür.</p>
-        </div>
-
-        <div class="drop-content" id="dropContent" style="display:none;">
-          <!-- Envanter Listesi -->
-          <div class="inventory-list" id="inventoryList">
-            <!-- JavaScript ile doldurulacak -->
-          </div>
-
-          <div class="drop-meta-grid">
-            <div class="dmeta">
-              <span class="dmeta-lbl">Sonraki Kontrol</span>
-              <span class="dmeta-val mono" id="nextCheckCountdown">—</span>
-            </div>
-            <div class="dmeta">
-              <span class="dmeta-lbl">Durum</span>
-              <span class="dmeta-val" id="dropStatus">İzleniyor</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-    </main><!-- /dashboard -->
-
-    <!-- LOG BÖLÜMÜ (kapalı başlar) -->
-    <div class="log-section glass" id="logSection">
-      <button class="log-toggle" id="logToggle" aria-expanded="false">
-        <div class="lt-left">
-          <span class="lt-icon">📟</span>
-          <span class="lt-label">Canlı Log</span>
-          <span class="log-count-badge" id="logCount">0</span>
-        </div>
-        <div class="lt-right">
-          <span class="lt-arrow" id="logArrow">▼</span>
-        </div>
-      </button>
-
-      <div class="log-body" id="logBody">
-        <div class="log-toolbar">
-          <button class="btn-xs" id="btnClear">🗑 Temizle</button>
-          <button class="btn-xs" id="btnPause">⏸ Sabitle</button>
-        </div>
-        <div class="log-console" id="logConsole">
-          <div class="log-line log-info">
-            <span class="ll-time">--:--:--</span>
-            <span class="ll-badge info">INFO</span>
-            <span class="ll-msg">Panel hazır. Sağ üstten token girerek botu başlatabilirsiniz.</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- /app-wrap -->
-
-  <!-- YARDIM MODALI -->
-  <div class="modal-overlay" id="helpModal" style="display:none;">
-    <div class="modal glass">
-      <button class="modal-close" id="modalClose">✕</button>
-      <h3>🔑 Auth-Token Nasıl Alınır?</h3>
-      <ol class="help-steps">
-        <li>Twitch.tv adresine gidip giriş yapın.</li>
-        <li>F12 ile Geliştirici Araçları'nı açın.</li>
-        <li>Application (veya Storage) sekmesine geçin.</li>
-        <li>Cookies bölümünden <code>https://www.twitch.tv</code> seçin.</li>
-        <li>Listedeki <code>auth-token</code> değerini kopyalayın.</li>
-      </ol>
-    </div>
-  </div>
-
-  <!-- TAM EKRAN GİRİŞ OVERLAY -->
-  <div class="login-overlay glass" id="loginOverlay" style="display: none;">
-    <div class="login-box">
-      <div class="lb-icon">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
-        </svg>
-      </div>
-      <h2>Twitch Drops Bot</h2>
-      <p>Lütfen devam etmek için Twitch <code>auth-token</code> değerinizi girin.</p>
+    <main style="padding: 20px 0;">
       
-      <div class="lb-input-group">
-        <input type="password" id="inputOverlayToken" class="lb-input" placeholder="auth-token buraya yapıştırın" autocomplete="off" spellcheck="false" />
-        <button class="btn btn-login-large" id="btnOverlayLogin">
-          <span id="overlayLoginText">Doğrula & Bağlan</span>
-        </button>
+      <div class="add-user-box glass">
+        <input type="text" id="newTokenInput" placeholder="Müşteri Auth-Token Yapıştırın..." />
+        <button class="btn" id="btnAddUser">Müşteri Ekle</button>
       </div>
 
-      <a href="#" class="lb-help-link" id="lbHelpLink">Token Nasıl Alınır?</a>
-
-      <div class="lb-loader" id="lbLoader" style="display: none;">
-        <div class="spinner"></div>
-        <p>Bilgiler doğrulanıyor...</p>
+      <div class="users-grid" id="usersGrid">
+        <!-- Kullanıcı Kartları Buraya Gelecek -->
       </div>
-    </div>
+
+    </main>
+
   </div>
-
+  
   <script src="app.js"></script>
 </body>
 </html>

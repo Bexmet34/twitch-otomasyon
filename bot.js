@@ -1,6 +1,6 @@
 // ============================================================
-//  Twitch Drops Bot – Ana Motor (bot.js)
-//  Puppeteer tabanlı, Albion Online odaklı drop toplayıcı
+//  Twitch Drops Bot – Çoklu Müşteri (SaaS) Motoru (bot.js)
+//  Puppeteer Context Pooling, Albion Online odaklı drop toplayıcı
 // ============================================================
 
 import puppeteer from 'puppeteer';
@@ -11,12 +11,35 @@ const CLAIM_CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 dakika
 const STREAM_CHECK_INTERVAL_MS =  15 * 60 * 1000; // 15 dakika
 const RECONNECT_DELAY_MS       =   2 * 60 * 1000; // 2 dakika
 
+// Tüm botların paylaşacağı tek Chrome uygulaması
+let sharedBrowser = null;
+
+export async function initSharedBrowser() {
+  if (sharedBrowser) return sharedBrowser;
+  console.log('[SİSTEM] Paylaşımlı Chrome başlatılıyor...');
+  sharedBrowser = await puppeteer.launch({
+    headless: "new",
+    executablePath: process.env.CHROME_PATH || (process.platform === 'win32' 
+      ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' 
+      : '/usr/bin/google-chrome'),
+    args: [
+      '--no-sandbox', '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas',
+      '--disable-gpu', '--mute-audio', '--window-size=1280,720',
+      '--disable-extensions'
+    ],
+    defaultViewport: { width: 1280, height: 720 },
+  });
+  return sharedBrowser;
+}
+
 export class TwitchDropsBot {
-  constructor({ authToken, log }) {
+  constructor({ login, authToken, log }) {
+    this.login      = login;
     this.authToken  = authToken;
     this.log        = log || console.log;
     this.running    = false;
-    this.browser    = null;
+    this.context    = null; // Incognito Context
     this.streamPage = null;
     this.stats      = {
       claimedCount:   0,
@@ -25,14 +48,13 @@ export class TwitchDropsBot {
       dropProgress:   0,
       dropName:       null,
       nextCheckAt:    null,
-      inventory:      [], // Full list of drops
+      inventory:      [],
     };
     this._claimTimer  = null;
     this._streamTimer = null;
     this._idleCount   = 0;
     this.sleepingUntil= 0;
   }
-
 
   async start() {
     if (this.running) { this.log('warn', 'Bot zaten çalışıyor.'); return; }
@@ -98,25 +120,13 @@ export class TwitchDropsBot {
   // ── SETUP ───────────────────────────────────────────────
 
   async _setup() {
-    this.log('info', '🌐 Tarayıcı başlatılıyor…');
-    this.browser = await puppeteer.launch({
-      headless: "new",
-      executablePath: process.env.CHROME_PATH || (process.platform === 'win32' 
-        ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' 
-        : '/usr/bin/google-chrome'),
-      args: [
-        '--no-sandbox', '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas',
-        '--disable-gpu', '--mute-audio', '--window-size=1280,720',
-      ],
-      defaultViewport: { width: 1280, height: 720 },
-    });
-
-    const tempPage = await this.browser.newPage();
-    await tempPage.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-      '(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
-    );
+    this.log('info', '🌐 İzole Sekme (Context) oluşturuluyor…');
+    if (!sharedBrowser) await initSharedBrowser();
+    
+    // Her kullanıcıya özel gizli sekme ortamı
+    this.context = await sharedBrowser.createIncognitoBrowserContext();
+    
+    const tempPage = await this._newPage();
     await tempPage.goto('https://www.twitch.tv', { waitUntil: 'domcontentloaded', timeout: 20_000 });
     await tempPage.setCookie({
       name: 'auth-token', value: this.authToken,
@@ -126,30 +136,47 @@ export class TwitchDropsBot {
     this.log('info', '🔑 Auth-token yüklendi.');
   }
 
-  // ── KAMPANYA KONTROLÜ ───────────────────────────────────
-
-  async _isCampaignActive() {
-    this.log('info', '🔎 Aktif Albion Online kampanyası var mı kontrol ediliyor...');
-    const page = await this.browser.newPage();
-    try {
+  // ── OPTİMİZE SAYFA OLUŞTURMA ─────────────────────────────
+  
+  async _newPage() {
+      if (!this.context) throw new Error("Tarayıcı context'i bulunamadı!");
+      const page = await this.context.newPage();
       await page.setUserAgent(
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
         '(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
       );
+      
+      // RAM ve İnternet Tasarrufu: Görsel, CSS ve fontları yükleme!
+      await page.setRequestInterception(true);
+      page.on('request', (req) => {
+          const type = req.resourceType();
+          if (['image', 'stylesheet', 'font'].includes(type)) {
+              req.abort();
+          } else {
+              req.continue();
+          }
+      });
+      return page;
+  }
+
+  // ── KAMPANYA KONTROLÜ ───────────────────────────────────
+
+  async _isCampaignActive() {
+    this.log('info', '🔎 Aktif Albion Online kampanyası var mı kontrol ediliyor...');
+    const page = await this._newPage();
+    try {
       await page.goto('https://www.twitch.tv/drops/campaigns', {
         waitUntil: 'networkidle2', 
         timeout: 30_000 
       });
-      await this._sleep(5000); // React elementlerinin yüklenmesi için bekleme payı
+      await this._sleep(5000);
 
       const hasAlbion = await page.evaluate(() => {
         const text = document.body.innerText.toLowerCase();
         return text.includes('albion online') || text.includes('albion');
       });
 
-      if (hasAlbion) {
-          this.log('info', '✅ Aktif Albion kampanyası bulundu!');
-      }
+      if (hasAlbion) this.log('info', '✅ Aktif Albion kampanyası bulundu!');
       return hasAlbion;
     } catch (err) {
       this.log('warn', `⚠️ Kampanya sayfası okunamadı: ${err.message}. Riske girmemek için var kabul ediliyor.`);
@@ -163,11 +190,7 @@ export class TwitchDropsBot {
 
   async _findDropChannel() {
     this.log('info', '🔍 Albion Online – Drops Enabled kanallar aranıyor…');
-    const page = await this.browser.newPage();
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-      '(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
-    );
+    const page = await this._newPage();
     try {
       await page.goto(
         `https://www.twitch.tv/directory/category/${GAME_SLUG}?tl=${DROPS_TAG}`,
@@ -192,11 +215,7 @@ export class TwitchDropsBot {
   async _watchChannel(channel) {
     this.stats.currentChannel = channel;
     this.log('info', `▶️  ${channel} kanalına bağlanılıyor…`);
-    this.streamPage = await this.browser.newPage();
-    await this.streamPage.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-      '(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
-    );
+    this.streamPage = await this._newPage();
     await this.streamPage.goto(`https://www.twitch.tv/${channel}`, {
       waitUntil: 'domcontentloaded', timeout: 30_000,
     });
@@ -248,7 +267,6 @@ export class TwitchDropsBot {
       this.stats.nextCheckAt = Date.now() + CLAIM_CHECK_INTERVAL_MS;
     };
 
-    // İlk kontrol Twitch'in ilerlemeyi kaydetmesi için 1 dakika (60s) sonra
     this.stats.nextCheckAt = Date.now() + 60_000;
     setTimeout(runCheck, 60_000);
 
@@ -257,40 +275,29 @@ export class TwitchDropsBot {
   }
 
   async _checkAndClaim() {
-    if (!this.running || !this.browser) return;
+    if (!this.running || !this.context) return;
     this.log('info', '🔎 Drop envanteri kontrol ediliyor…');
 
-    const page = await this.browser.newPage();
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-      '(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
-    );
+    const page = await this._newPage();
     try {
       await page.goto('https://www.twitch.tv/drops/inventory', {
         waitUntil: 'domcontentloaded', timeout: 20_000,
       });
       await this._sleep(3_000);
 
-      // Tam envanter listesini ve detayları çek
       const inventoryData = await page.evaluate(() => {
         const results = [];
-        
-        // 1. İlerleme Olan Droplar (In Progress)
         const progressBars = document.querySelectorAll('[data-a-target="tw-progress-bar-animation"], [role="progressbar"]');
         progressBars.forEach(bar => {
           let progress = parseInt(bar.getAttribute('value')) || 
                          parseInt(bar.getAttribute('aria-valuenow')) || 
                          parseInt(bar.style.width) || 0;
-          
           let container = bar;
           let name = 'Bilinmeyen Drop';
           let image = null;
-          
-          // Yukarı doğru 8 element çıkıp bilgileri arayalım
           for (let i = 0; i < 8; i++) {
               container = container.parentElement;
               if (!container) break;
-              
               const nameEl = container.querySelector('h4, h3, p.tw-strong, .tw-title, [data-test-selector*="reward-name"]');
               if (nameEl && nameEl.textContent.trim().length > 0) {
                   name = nameEl.textContent.trim();
@@ -299,8 +306,6 @@ export class TwitchDropsBot {
                   break;
               }
           }
-          
-          // Eğer name hala bulunamadıysa fallback
           if (name === 'Bilinmeyen Drop' && container) {
               const allP = container.querySelectorAll('p');
               for (const p of allP) {
@@ -313,17 +318,14 @@ export class TwitchDropsBot {
                   }
               }
           }
-
           if(!results.find(r => r.name === name)) {
              results.push({ name, progress, image });
           }
         });
 
-        // 2. Alınan Droplar (Claimed)
         const allImages = document.querySelectorAll('img[src*="campaign"], img[src*="chest"]');
         allImages.forEach(img => {
             if(results.find(r => r.image === img.src)) return;
-            
             let container = img.closest('div[data-test-selector]') || img.parentElement.parentElement;
             if (container && (container.textContent.includes('önce') || container.textContent.includes('Claim') || container.textContent.includes('Alındı') || container.textContent.includes('ago') || container.textContent.includes('hakkında'))) {
                 let name = 'Alınan Ödül';
@@ -333,16 +335,13 @@ export class TwitchDropsBot {
                 } else if (img.alt) {
                   name = img.alt;
                 }
-                
                 results.push({ name: name.substring(0,25) + ' (Alındı)', progress: 100, image: img.src });
             }
         });
-
         return results;
       }).catch(() => []);
 
       this.stats.inventory = inventoryData;
-
       if (inventoryData.length > 0) {
         this.stats.dropName = inventoryData[0].name;
         this.stats.dropProgress = inventoryData[0].progress;
@@ -351,7 +350,6 @@ export class TwitchDropsBot {
         this.stats.dropProgress = 0;
       }
 
-      // Claim butonu
       const claimSel = 'button[data-test-selector="DropsCampaignInProgressRewardPresentation-claim-button"]';
       const claimBtn = await page.$(claimSel);
 
@@ -361,14 +359,13 @@ export class TwitchDropsBot {
         this.stats.dropProgress = 100;
         this.log('success', `🎁 DROP TOPLANDII! Toplam: ${this.stats.claimedCount}`);
         await this._sleep(2_000);
-        // Birden fazla drop
         const extra = await page.$(claimSel);
         if (extra) {
           await extra.click();
           this.stats.claimedCount++;
           this.log('success', `🎁 Ekstra drop! Toplam: ${this.stats.claimedCount}`);
         }
-        this.stats.dropProgress = 0; // Yeni drop için sıfırla
+        this.stats.dropProgress = 0; 
       } else {
         const p = this.stats.dropProgress;
         this.log('info', p > 0 ? `📊 Drop ilerlemesi: %${p}` : 'ℹ️  Henüz toplanacak drop yok.');
@@ -380,8 +377,8 @@ export class TwitchDropsBot {
         }
 
         if (this._idleCount >= 3) {
-            this.log('warn', '⚠️ Uzun süredir yeni bir drop ilerlemesi yok (Haftalık/Günlük sınır dolmuş olabilir).');
-            this.sleepingUntil = Date.now() + (4 * 60 * 60 * 1000); // 4 saat uyku
+            this.log('warn', '⚠️ Uzun süredir ilerleme yok (Sınır dolmuş olabilir).');
+            this.sleepingUntil = Date.now() + (4 * 60 * 60 * 1000); 
             this._idleCount = 0;
             clearInterval(this._claimTimer);
             clearInterval(this._streamTimer);
@@ -437,8 +434,8 @@ export class TwitchDropsBot {
     clearInterval(this._streamTimer);
     this.stats.currentChannel = null;
     this.stats.nextCheckAt    = null;
-    try { if (this.browser) await this.browser.close(); } catch (_) {}
-    this.browser    = null;
+    try { if (this.context) await this.context.close(); } catch (_) {}
+    this.context    = null;
     this.streamPage = null;
   }
 
