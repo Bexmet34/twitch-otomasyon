@@ -66,8 +66,10 @@
            </select>
            <button class="btn" id="btnGenLicense" style="background: #ffaa00; border-color: #ffaa00; flex:1;">🔑 Toplu Lisans Üret</button>
         </div>
-        <textarea id="licenseOutput" style="display:none; width:100%; height:80px; background:rgba(0,0,0,0.3); color:#0f0; border:1px solid #333; padding:10px; font-family:monospace; margin-top:10px;" readonly></textarea>
-        <div id="licenseList" style="color:#aaa; font-size:0.9em; max-height:100px; overflow-y:auto; margin-top:10px;"></div>
+        <textarea id="licenseOutput" placeholder="Üretilen kodlar toplu olarak buraya kopyalamanız için düşer..." style="width:100%; height:120px; background:rgba(0,0,0,0.3); color:#00ff80; border:1px dashed rgba(255,255,255,0.2); padding:10px; font-family:monospace; margin-top:10px; border-radius: 8px; font-size:1.1rem; line-height: 1.5; resize:none;" readonly></textarea>
+        
+        <h4 style="margin-top: 20px; color:#aaa;">Sistemdeki Tüm Lisanslar</h4>
+        <div id="licenseList" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; max-height:300px; overflow-y:auto; margin-top:10px; padding-right:10px;"></div>
       </div>
 
       <div class="users-grid" id="usersGrid">

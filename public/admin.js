@@ -35,7 +35,21 @@ function fetchLicenses() {
     fetch('/api/admin/licenses', { headers: { 'x-admin-password': adminPass } })
       .then(res => res.json())
       .then(lics => {
-        $('licenseList').innerHTML = lics.map(l => `<div><code>${l.code}</code> (${l.durationDays || 30} Gün) - ${l.used ? `Kullanıldı (@${l.usedBy})` : 'Boşta'}</div>`).join('');
+        // En yeniler üstte olsun
+        lics.reverse();
+        $('licenseList').innerHTML = lics.map(l => {
+          const bg = l.used ? 'rgba(255,50,50,0.1)' : 'rgba(0,255,128,0.1)';
+          const border = l.used ? 'rgba(255,50,50,0.3)' : 'rgba(0,255,128,0.3)';
+          const color = l.used ? '#ff5555' : '#00ff80';
+          
+          return `
+          <div style="background:${bg}; border:1px solid ${border}; border-radius:8px; padding:12px; text-align:center;">
+             <div style="font-family:monospace; font-size:1.1rem; color:${color}; font-weight:bold; letter-spacing:1px; margin-bottom:5px;">${l.code}</div>
+             <div style="font-size:0.85rem; color:#ccc;">${l.durationDays || 30} Günlük</div>
+             <div style="font-size:0.8rem; color:#888; margin-top:5px;">${l.used ? `Kullanıldı (@${l.usedBy})` : 'Boşta (Satışa Hazır)'}</div>
+          </div>
+          `;
+        }).join('');
       });
   } catch(e) {}
 }
@@ -67,77 +81,45 @@ function renderUsers() {
     return;
   }
   for (const u of users) {
-    const s = u.stats || {};
-    const card = document.createElement('div');
-    card.className = 'user-card';
-    card.innerHTML = `
-      <div class="uc-header">
-        <img class="uc-avatar" src="${esc(u.profile_image_url) || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23333%22/></svg>'}" />
-        <div class="uc-info">
-          <div class="uc-name">${esc(u.display_name)}</div>
-          <div class="uc-login">@${esc(u.login)}</div>
-        </div>
-        <div class="uc-status ${u.isRunning ? 'online' : ''}">${u.isRunning ? 'Aktif' : 'Durdu'}</div>
-      </div>
-      
-      <div class="uc-stats">
-        <div class="uc-stat-col">
-          <span>Kanal</span>
-          <span class="uc-stat-val">${s.currentChannel ? esc(s.currentChannel) : '—'}</span>
-        </div>
-        <div class="uc-stat-col">
-          <span>Drop Toplamı</span>
-          <span class="uc-stat-val">${s.claimedCount || 0}</span>
-        </div>
-        <div class="uc-stat-col">
-          <span>Süre</span>
-          <span class="uc-stat-val">${formatUptime(s.startedAt)}</span>
-        </div>
-      </div>
-
-      <div class="uc-progress">
-        <div>Drop: ${s.dropName ? esc(s.dropName) : 'Yok'}</div>
-        <div class="uc-progress-bar">
-          <div class="uc-progress-fill" style="width: ${s.dropProgress || 0}%"></div>
-        </div>
-      </div>
-
-      <div class="uc-actions" style="margin-top: 15px;">
-        ${u.isRunning 
-          ? `<button class="btn-stop" onclick="stopUser('${u.login}')">⏹ Durdur</button>`
-          : `<button class="btn-play" onclick="startUser('${u.login}')">▶ Başlat</button>`
-        }
-        <button class="btn-del" onclick="deleteUser('${u.login}')">🗑 Sil</button>
-      </div>
-    `;
-    grid.appendChild(card);
-  }
+async function startBot(login) { 
+  await fetch(`/api/admin/start/${login}`, { method: 'POST', headers: { 'x-admin-password': adminPass } }); 
+  fetchUsers();
 }
 
-async function startUser(login) { await fetch(`/api/admin/start/${login}`, { method: 'POST', headers: { 'x-admin-password': adminPass } }); }
-async function stopUser(login) { await fetch(`/api/admin/stop/${login}`, { method: 'POST', headers: { 'x-admin-password': adminPass } }); }
+async function stopBot(login) { 
+  await fetch(`/api/admin/stop/${login}`, { method: 'POST', headers: { 'x-admin-password': adminPass } }); 
+  fetchUsers();
+}
+
 async function deleteUser(login) {
   if(!confirm(`@${login} tamamen silinecek?`)) return;
   await fetch(`/api/admin/users/${login}`, { method: 'DELETE', headers: { 'x-admin-password': adminPass } });
+  fetchUsers();
 }
 
 $('btnGenLicense').addEventListener('click', async () => {
   const amount = parseInt($('licenseCount').value) || 1;
   const duration = parseInt($('licenseDuration').value) || 30;
+  
+  $('btnGenLicense').textContent = 'Üretiliyor...';
+  
   const res = await fetch('/api/admin/licenses', { 
      method: 'POST', 
      headers: { 'x-admin-password': adminPass, 'Content-Type': 'application/json' },
      body: JSON.stringify({ amount, duration })
   });
   const d = await res.json();
+  
+  $('btnGenLicense').textContent = '🔑 Toplu Lisans Üret';
+  
   if(d.ok) {
-    const out = $('licenseOutput');
-    out.style.display = 'block';
-    out.value = d.codes.join('\\n');
-    out.select();
-    document.execCommand('copy');
-    alert(amount + " adet lisans üretildi ve PANOYA KOPYALANDI! Direkt İtemSatış Stoklarına yapıştırabilirsiniz.");
-    fetchLicenses();
+     const out = $('licenseOutput');
+     out.style.display = 'block';
+     out.value = d.codes.join('\n');
+     out.select();
+     document.execCommand('copy');
+     alert(`${d.codes.length} adet kod üretildi ve panoya KOPYALANDI!\n\nİtemSatış e-pin stok alanına CTRL+V yapabilirsiniz.`);
+     fetchLicenses();
   }
 });
 
