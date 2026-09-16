@@ -183,9 +183,14 @@ app.get('/api/admin/licenses', requireAdmin, (req, res) => {
 });
 
 app.post('/api/admin/licenses', requireAdmin, async (req, res) => {
-  const code = 'ITEM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-  await db.addLicense(code);
-  res.json({ ok: true, code });
+  const amount = parseInt(req.body.amount) || 1;
+  const codes = [];
+  for (let i = 0; i < amount; i++) {
+    const code = 'ITEM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    await db.addLicense(code);
+    codes.push(code);
+  }
+  res.json({ ok: true, codes });
 });
 
 
@@ -205,13 +210,37 @@ const wss = new WebSocketServer({ server });
 const clients = new Set();
 wss.on('connection', ws => {
   clients.add(ws);
+  
+  ws.on('message', msg => {
+    try {
+       const data = JSON.parse(msg);
+       if (data.type === 'auth') {
+          ws.targetLogin = data.login;
+          ws.isAdmin = (data.password === ADMIN_PASS);
+       }
+    } catch(e) {}
+  });
+
   ws.on('close', () => clients.delete(ws));
 });
 
 function broadcast(data) {
   const payload = JSON.stringify(data);
   for (const c of clients) {
-    if (c.readyState === 1) c.send(payload);
+    if (c.readyState === 1) {
+       // Admin her şeyi görür. Müşteri sadece kendi loglarını ve genel statları görür.
+       if (c.isAdmin) {
+          c.send(payload);
+       } else if (data.type === 'log') {
+          if (c.targetLogin === data.login) c.send(payload);
+       } else if (data.type === 'all_stats') {
+          // all_stats içinde sadece kendi stat'ını yolla
+          const myStat = data.data.find(x => x.login === c.targetLogin);
+          if (myStat) c.send(JSON.stringify({ type: 'my_stat', data: myStat }));
+       } else {
+          c.send(payload);
+       }
+    }
   }
 }
 

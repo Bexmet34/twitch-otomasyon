@@ -120,10 +120,20 @@ async function deleteUser(login) {
 }
 
 $('btnGenLicense').addEventListener('click', async () => {
-  const res = await fetch('/api/admin/licenses', { method: 'POST', headers: { 'x-admin-password': adminPass } });
+  const amount = parseInt($('licenseCount').value) || 1;
+  const res = await fetch('/api/admin/licenses', { 
+     method: 'POST', 
+     headers: { 'x-admin-password': adminPass, 'Content-Type': 'application/json' },
+     body: JSON.stringify({ amount })
+  });
   const d = await res.json();
   if(d.ok) {
-    alert("Yeni lisans oluşturuldu: " + d.code);
+    const out = $('licenseOutput');
+    out.style.display = 'block';
+    out.value = d.codes.join('\\n');
+    out.select();
+    document.execCommand('copy');
+    alert(amount + " adet lisans üretildi ve PANOYA KOPYALANDI! Direkt İtemSatış Stoklarına yapıştırabilirsiniz.");
     fetchLicenses();
   }
 });
@@ -138,15 +148,22 @@ $('btnRestartServer').addEventListener('click', async () => {
 $('btnAutoCode').addEventListener('click', () => {
   const host = window.location.origin;
   const code = `
-const lic = prompt('İtemSatış Lisans Kodunuzu Girin:');
+const lic = prompt('İtemSatış Lisans Kodunuzu Girin (Örn: ITEM-XXXX):');
 if(lic){
   fetch('${host}/api/register', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1], licenseCode: lic })
-  }).then(r=>r.json()).then(d=>alert(d.ok ? '✅ Başarıyla kayıt oldunuz!' : '❌ Hata: ' + d.error)).catch(()=>alert('Hata!'));
+    body: JSON.stringify({ token: document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1], licenseCode: lic.trim() })
+  }).then(r=>r.json()).then(d=>alert(d.ok ? '✅ Sistem Kuruldu! Artık panelden ilerlemeyi izleyebilirsiniz.' : '❌ Hata: ' + d.error)).catch(()=>alert('Hata!'));
 }`;
   
-  prompt("Müşterinize İtemSatış lisans kodunu ve aşağıdaki kodu gönderin:\n\nTwitch.tv'de F12 -> Console'a yapıştırılacak:", code.trim());
+  prompt("Müşterinize vereceğiniz kurulum mesajı:", 
+`Merhaba! Bizi tercih ettiğiniz için teşekkürler. Kurulum çok basittir:
+1. Sitemize gidin: ${host}
+2. Sitedeki "Kayıt Ol" butonuna tıklayıp ordaki kurulum kodunu kopyalayın.
+3. twitch.tv'ye girip F12 ile Konsol (Console) sekmesini açın.
+4. Kodu yapıştırıp Enter'a basın, size İtemSatış Lisans Kodunuzu soracak.
+Lisans Kodunuz: (Buraya İtemSatış'ın otomatik verdiği kodu koyacaksınız)`
+  );
 });
 
 document.addEventListener('DOMContentLoaded', () => {

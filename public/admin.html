@@ -58,10 +58,12 @@
       
       <div class="add-user-box glass" style="flex-direction: column; gap: 15px;">
         <div style="display:flex; gap:10px;">
-           <button class="btn" id="btnGenLicense" style="background: #ffaa00; border-color: #ffaa00; flex:1;">🔑 Yeni Lisans (İtemSatış) Üret</button>
-           <button class="btn" id="btnAutoCode" style="background: var(--accent); border-color: var(--accent); flex:1;">🧩 Müşteriye Kod Gönder</button>
+           <input type="number" id="licenseCount" placeholder="Miktar (Örn: 50)" style="width:130px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px; border-radius: 6px;" />
+           <button class="btn" id="btnGenLicense" style="background: #ffaa00; border-color: #ffaa00; flex:1;">🔑 Toplu Lisans (İtemSatış) Üret</button>
+           <button class="btn" id="btnAutoCode" style="background: var(--accent); border-color: var(--accent); flex:1;">🧩 Müşteriye Kurulum Linki/Kodu Ver</button>
         </div>
-        <div id="licenseList" style="color:#aaa; font-size:0.9em; max-height:100px; overflow-y:auto;"></div>
+        <textarea id="licenseOutput" style="display:none; width:100%; height:80px; background:rgba(0,0,0,0.3); color:#0f0; border:1px solid #333; padding:10px; font-family:monospace; margin-top:10px;" readonly></textarea>
+        <div id="licenseList" style="color:#aaa; font-size:0.9em; max-height:100px; overflow-y:auto; margin-top:10px;"></div>
       </div>
 
       <div class="users-grid" id="usersGrid">

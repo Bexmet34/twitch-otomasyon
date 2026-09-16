@@ -3,46 +3,149 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Twitch Drops Takip Paneli</title>
+  <title>Twitch Drops – Müşteri Paneli</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <style>
-    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-    .customer-box { width: 100%; max-width: 450px; text-align: center; }
-    .input-group { display: flex; gap: 10px; margin-top: 20px; }
+    body { min-height: 100vh; padding: 20px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+    .tabs button { flex: 1; padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: white; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .tabs button.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    
+    .panel { display: none; background: rgba(20,20,30,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 30px; }
+    .panel.active { display: block; }
+
+    /* Takip Ekranı */
+    .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
     .input-group input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: white; font-size: 1rem; }
     
-    .stats-card { background: rgba(20,20,30,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; margin-top: 30px; text-align: left; display: none; }
-    
-    .uc-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
-    .uc-avatar { width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--accent); }
-    .uc-name { font-weight: 600; font-size: 1.2rem; }
-    .uc-status { font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; background: rgba(255,255,255,0.1); }
+    .header-info { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .uc-avatar { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--accent); }
+    .uc-status { font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; background: rgba(255,255,255,0.1); display: inline-block; margin-top:5px; }
     .uc-status.online { background: rgba(0, 255, 128, 0.2); color: #00ff80; }
-    
-    .uc-stats { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 0.95rem; }
-    .uc-stat-col { display: flex; flex-direction: column; }
-    .uc-stat-val { font-family: 'JetBrains Mono', monospace; font-weight: bold; color: var(--accent); margin-top: 5px; }
-    
-    .uc-progress-bar { width: 100%; height: 8px; background: rgba(0,0,0,0.4); border-radius: 4px; margin-top: 8px; overflow: hidden; }
-    .uc-progress-fill { height: 100%; background: var(--accent); transition: width 0.5s ease; }
+
+    /* İstatistikler (Eski tasarım) */
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
+    .stat-box { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+    .stat-box .val { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: bold; color: var(--accent); margin-top: 5px; }
+
+    /* Envanter */
+    .inventory-section { margin-bottom: 25px; }
+    .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; }
+    .drop-item { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .drop-item img { width: 100%; height: 100px; object-fit: contain; border-radius: 6px; background: rgba(0,0,0,0.5); }
+    .drop-title { font-size: 0.9rem; font-weight: 500; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .drop-progress { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+    .drop-progress-fill { height: 100%; background: var(--accent); }
+
+    /* Log Terminal */
+    .terminal { background: #0a0a0f; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; height: 250px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.6; }
+    .log-line { display: flex; gap: 10px; margin-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.02); padding-bottom: 5px; }
+    .log-time { color: #666; }
+    .log-level { font-weight: 600; width: 50px; }
+    .log-msg { color: #ddd; flex: 1; }
+    .level-info { color: #00ff80; }
+    .level-warn { color: #ffaa00; }
+    .level-error { color: #ff4545; }
+    .level-success { color: #00d2ff; }
+
+    /* Kayıt Ekranı */
+    .setup-box { background: rgba(255,255,255,0.02); padding: 20px; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.2); }
+    .setup-code { width: 100%; height: 140px; background: #000; color: #0f0; padding: 15px; font-family: 'JetBrains Mono', monospace; border-radius: 8px; border: 1px solid #333; margin: 15px 0; resize: none; }
   </style>
 </head>
 <body>
   <div class="bg-orbs" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
 
-  <div class="customer-box glass" style="padding: 30px; border-radius: 20px;">
-    <h2>Twitch Drops Botunuzu Takip Edin</h2>
-    <p style="color: var(--text-muted); margin-top: 10px;">İtemSatış üzerinden aldığınız hizmetin durumunu canlı olarak buradan görebilirsiniz.</p>
+  <div class="container">
     
-    <div class="input-group">
-      <input type="text" id="usernameInput" placeholder="Twitch Kullanıcı Adınız" />
-      <button class="btn" id="btnCheck">Durumu Sorgula</button>
+    <div class="brand" style="margin-bottom: 30px; justify-content: center;">
+      <div class="brand-text">
+        <span class="brand-name">Twitch Drops</span>
+        <span class="brand-sub">Otonom Toplama Sistemi</span>
+      </div>
     </div>
 
-    <div class="stats-card" id="statsCard">
-      <!-- Ajax ile dolacak -->
+    <div class="tabs">
+      <button id="tabTrack" class="active">📊 Botumu İzle</button>
+      <button id="tabSetup">🧩 İtemSatış'tan Yeni Aldım (Kurulum)</button>
     </div>
+
+    <!-- TAKİP PANELİ -->
+    <div id="panelTrack" class="panel active">
+      <h3 style="margin-bottom: 15px;">Durum Sorgula</h3>
+      <div class="input-group">
+        <input type="text" id="usernameInput" placeholder="Twitch Kullanıcı Adınız (Örn: melyrionn)" />
+        <button class="btn" id="btnCheck">Sorgula</button>
+      </div>
+
+      <div id="fullDashboard" style="display:none; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+        
+        <div class="header-info">
+          <img id="uiAvatar" class="uc-avatar" src="" />
+          <div>
+            <h2 id="uiName" style="margin: 0; font-size: 1.5rem;">Yükleniyor...</h2>
+            <div id="uiStatus" class="uc-status">Durum Yükleniyor</div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div style="color:var(--text-muted); font-size:0.9rem;">İzlenen Kanal</div>
+            <div class="val" id="uiChannel">—</div>
+          </div>
+          <div class="stat-box">
+            <div style="color:var(--text-muted); font-size:0.9rem;">Alınan Kutu</div>
+            <div class="val" id="uiClaimed">0</div>
+          </div>
+          <div class="stat-box">
+            <div style="color:var(--text-muted); font-size:0.9rem;">Aktif Süre</div>
+            <div class="val" id="uiUptime">00:00</div>
+          </div>
+        </div>
+
+        <div class="inventory-section">
+          <h3 style="margin-bottom: 10px;">Envanter Durumu</h3>
+          <div class="inventory-grid" id="uiInventory">
+            <!-- Dinamik dolacak -->
+          </div>
+        </div>
+
+        <div>
+          <h3 style="margin-bottom: 10px;">Canlı Loglar</h3>
+          <div class="terminal" id="terminal">
+            <div style="color: #666; text-align: center; margin-top: 100px;">Sisteme bağlanıldı, canlı veriler bekleniyor...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- KURULUM PANELİ -->
+    <div id="panelSetup" class="panel">
+      <h2 style="margin-bottom: 15px;">Otomatik Kurulum</h2>
+      <p style="color: #aaa; margin-bottom: 20px;">İtemSatış üzerinden sistemimizi satın aldığınız için teşekkürler. Botunuzu başlatmak sadece 1 dakikanızı alır.</p>
+      
+      <div class="setup-box">
+        <h3 style="color: var(--accent); margin-bottom: 10px;">Adım Adım Kurulum:</h3>
+        <ol style="line-height: 1.8; color: #ddd; margin-left: 20px;">
+          <li>Aşağıdaki <b>Kurulum Kodunu</b> kopyalayın.</li>
+          <li>Bilgisayarınızdan <a href="https://twitch.tv" target="_blank" style="color:#00ff80;">twitch.tv</a> adresine gidin ve hesabınıza giriş yapın.</li>
+          <li>Klavyenizden <b>F12</b> tuşuna basarak Geliştirici Seçenekleri'ni açın.</li>
+          <li>Üst menüden <b>Console (Konsol)</b> sekmesine tıklayın.</li>
+          <li>Kopyaladığınız kodu o siyah/beyaz boşluğa yapıştırıp <b>Enter</b>'a basın.</li>
+          <li>Karşınıza çıkan küçük pencereye İtemSatış'ın size verdiği <b>Lisans Kodunu (Örn: ITEM-XXXX)</b> yazın ve onaylayın.</li>
+        </ol>
+
+        <textarea class="setup-code" id="setupCodeSnippet" readonly></textarea>
+        <button class="btn" id="btnCopyCode" style="width: 100%; background: #00ff80; color: #000; font-weight: bold;">Kodu Kopyala</button>
+      </div>
+      
+      <p style="text-align: center; margin-top: 20px; font-size: 0.9rem; color: #666;">Kurulum bittikten sonra "Botumu İzle" sekmesinden Twitch adınızı yazarak durumunuzu takip edebilirsiniz.</p>
+    </div>
+
   </div>
   
   <script src="app.js"></script>
