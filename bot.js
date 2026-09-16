@@ -146,11 +146,11 @@ export class TwitchDropsBot {
         '(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
       );
       
-      // RAM ve İnternet Tasarrufu: Görsel, CSS ve fontları yükleme!
+      // RAM ve İnternet Tasarrufu: Görsel, medya ve fontları yükleme!
       await page.setRequestInterception(true);
       page.on('request', (req) => {
           const type = req.resourceType();
-          if (['image', 'stylesheet', 'font'].includes(type)) {
+          if (['image', 'media', 'font'].includes(type)) {
               req.abort();
           } else {
               req.continue();
@@ -196,11 +196,16 @@ export class TwitchDropsBot {
         `https://www.twitch.tv/directory/category/${GAME_SLUG}?tl=${DROPS_TAG}`,
         { waitUntil: 'domcontentloaded', timeout: 30_000 }
       );
-      await this._sleep(4_000);
-      const href = await page.$eval(
-        'a[data-a-target="preview-card-image-link"]',
-        el => el.getAttribute('href')
-      ).catch(() => null);
+      await this._sleep(5_000); // Sayfanın render olması için bekle
+      
+      const href = await page.evaluate(() => {
+        // En yaygın yayın kartı link seçicileri
+        const card = document.querySelector('a[data-a-target="preview-card-image-link"]') 
+                  || document.querySelector('article a[href]')
+                  || document.querySelector('.tw-tower a[href]');
+        return card ? card.getAttribute('href') : null;
+      });
+
       if (!href) return null;
       const channel = href.replace('/', '').trim();
       this.log('info', `📺 Kanal bulundu: ${channel}`);

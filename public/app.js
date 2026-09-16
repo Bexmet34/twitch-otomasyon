@@ -68,6 +68,17 @@ function renderStats(u) {
   const s = u.stats || {};
   $('uiChannel').textContent = s.currentChannel ? esc(s.currentChannel) : 'Aranıyor...';
   $('uiClaimed').textContent = s.claimedCount || 0;
+  
+  if (s.dropName) {
+    $('uiCurrentDropName').textContent = s.dropName;
+    $('uiCurrentDropPercent').textContent = `%${s.dropProgress || 0}`;
+    $('uiCurrentDropFill').style.width = `${s.dropProgress || 0}%`;
+  } else {
+    $('uiCurrentDropName').textContent = 'Aranıyor...';
+    $('uiCurrentDropPercent').textContent = '%0';
+    $('uiCurrentDropFill').style.width = '0%';
+  }
+  
   $('uiUptime').textContent = formatUptime(s.startedAt);
 
   renderInventory(s.inventory, s.dropName, s.dropProgress);
