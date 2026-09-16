@@ -80,7 +80,46 @@ function renderUsers() {
     grid.innerHTML = '<div style="color:var(--text-muted); grid-column: 1/-1; text-align:center; padding: 40px;">Henüz kayıtlı müşteri yok.</div>';
     return;
   }
-  for (const u of users) {
+  
+  grid.innerHTML = users.map(u => {
+    const hasBot = u.isRunning;
+    let timeRemaining = "Süresiz";
+    if (u.expiresAt) {
+       const left = u.expiresAt - Date.now();
+       if (left <= 0) timeRemaining = '<span style="color:red">SÜRESİ BİTTİ</span>';
+       else {
+         const d = Math.floor(left / (1000 * 60 * 60 * 24));
+         const h = Math.floor((left / (1000 * 60 * 60)) % 24);
+         timeRemaining = `<span style="color:var(--accent)">${d} Gün, ${h} Saat Kaldı</span>`;
+       }
+    }
+    
+    return `
+    <div class="user-card glass">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+         <div class="user-header">
+            <img class="avatar" src="${u.profile_image_url || 'https://static-cdn.jtvnw.net/user-default-pictures-uv/13e5fa74-defa-11e9-809c-784f43822e80-profile_image-70x70.png'}" />
+            <div>
+               <h3 style="margin:0; font-size:1.1rem;">${esc(u.display_name)}</h3>
+               <div class="status ${hasBot ? 'status-active' : 'status-inactive'}">${hasBot ? 'Aktif' : 'Pasif'}</div>
+            </div>
+         </div>
+         <button class="btn" style="background:#ff4545; padding:5px 10px; font-size:0.8rem;" onclick="deleteUser('${u.login}')">Sil</button>
+      </div>
+      <div class="user-stats" style="margin-top:15px; font-size:0.9rem; color:#aaa;">
+         <p><b>E-Posta:</b> ${esc(u.email || 'Bilinmiyor')}</p>
+         <p><b>Lisans Durumu:</b> ${timeRemaining}</p>
+         <p><b>Alınan Kutu:</b> ${u.stats ? u.stats.claimedCount : 0}</p>
+         <p><b>Anlık Hedef:</b> ${(u.stats && u.stats.dropName) ? esc(u.stats.dropName) : 'Yok'}</p>
+      </div>
+      <div style="margin-top:15px; display:flex; gap:10px;">
+         ${hasBot 
+           ? `<button class="btn" style="flex:1; background:#ffaa00; color:#000;" onclick="stopBot('${u.login}')">Durdur</button>`
+           : `<button class="btn" style="flex:1; background:#00ff80; color:#000;" onclick="startBot('${u.login}')">Başlat</button>`}
+      </div>
+    </div>
+  `}).join('');
+}
 async function startBot(login) { 
   await fetch(`/api/admin/start/${login}`, { method: 'POST', headers: { 'x-admin-password': adminPass } }); 
   fetchUsers();
