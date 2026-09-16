@@ -21,6 +21,15 @@ const PORT = process.env.PORT || 4000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ── CORS (Twitch'ten gelen istekleri kabul etmek için) ──
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://www.twitch.tv');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+
 // ── BOT MANAGER ───────────────────────────────────────────────
 const bots = new Map(); // login -> TwitchDropsBot instance
 

@@ -150,6 +150,16 @@ $('btnRestartServer').addEventListener('click', async () => {
   setTimeout(()=> location.reload(), 3000);
 });
 
+$('btnAutoCode').addEventListener('click', () => {
+  const host = window.location.origin;
+  const code = `fetch('${host}/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1] }) }).then(r=>r.json()).then(d=>alert(d.ok ? '✅ Başarıyla eklendi!' : '❌ Hata: ' + d.error)).catch(()=>alert('Hata!'));`;
+  
+  prompt(
+    "Aşağıdaki kodu kopyalayın ve müşterinize gönderin.\n\nMüşterinin yapması gerekenler:\n1. twitch.tv'ye giriş yapmak\n2. F12'ye basıp 'Console' (Konsol) sekmesine gelmek\n3. Bu kodu yapıştırıp Enter'a basmak.\n\nKOD:", 
+    code
+  );
+});
+
 // INIT
 document.addEventListener('DOMContentLoaded', () => {
   fetchUsers();
