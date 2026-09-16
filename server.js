@@ -17,11 +17,12 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const ADMIN_PASS = 'admin123'; // Admin şifresi
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── CORS (Twitch'ten gelen istekleri kabul etmek için) ──
+// ── CORS ──
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'https://www.twitch.tv');
   res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -30,8 +31,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── BOT MANAGER ───────────────────────────────────────────────
-const bots = new Map(); // login -> TwitchDropsBot instance
+// ── BOT MANAGER ──
+const bots = new Map(); 
 
 function makeLogger(login) {
   return (level, message) => {
@@ -42,22 +43,17 @@ function makeLogger(login) {
 }
 
 async function startBotForUser(user) {
-  if (bots.has(user.login)) return bots.get(user.login); // Zaten çalışıyor
-
+  if (bots.has(user.login)) return bots.get(user.login); 
   const logger = makeLogger(user.login);
   const bot = new TwitchDropsBot({ login: user.login, authToken: user.token, log: logger });
   bots.set(user.login, bot);
-  
   await db.updateStatus(user.login, true);
-  
-  // Arka planda başlat
   bot.start().catch(err => {
     logger('error', `Bot başlatılırken hata: ${err.message}`);
     bot.stop();
     bots.delete(user.login);
     db.updateStatus(user.login, false);
   });
-  
   return bot;
 }
 
@@ -71,48 +67,43 @@ async function stopBotForUser(login) {
   await db.updateStatus(login, false);
 }
 
-// ── API ENDPOINTLERİ ─────────────────────────────────────────
+// ── ADMIN GÜVENLİĞİ MIDDLEWARE ──
+function requireAdmin(req, res, next) {
+  const pass = req.headers['x-admin-password'];
+  if (pass !== ADMIN_PASS) return res.status(401).json({ error: 'Yetkisiz erişim.' });
+  next();
+}
 
-// Tüm kullanıcıları ve durumlarını getir
-app.get('/api/users', (req, res) => {
-  const users = db.getUsers().map(u => {
-    const bot = bots.get(u.login);
-    return {
-      ...u,
-      stats: bot ? bot.getStats() : null
-    };
-  });
-  res.json(users);
-});
 
-// Yeni Kullanıcı Ekle (Token ile)
-app.post('/api/users', async (req, res) => {
-  const { token } = req.body;
-  if (!token) return res.status(400).json({ error: 'Token gereklidir.' });
+// ── MÜŞTERİ (PUBLİC) API'LERİ ──
+
+// Müşterinin (Konsoldan) Kendi Token'ını Lisans ile Göndermesi
+app.post('/api/register', async (req, res) => {
+  const { token, licenseCode } = req.body;
+  if (!token || !licenseCode) return res.status(400).json({ error: 'Token ve Lisans Kodu gereklidir.' });
 
   try {
-    // Token'ı Twitch üzerinden doğrula ve profil bilgilerini al
     const hRes = await fetch('https://id.twitch.tv/oauth2/validate', {
       headers: { 'Authorization': `OAuth ${token}` }
     }).catch(() => null);
 
-    if (!hRes || !hRes.ok) throw new Error('Geçersiz veya süresi dolmuş auth-token.');
+    if (!hRes || !hRes.ok) throw new Error('Geçersiz veya süresi dolmuş Twitch hesabı.');
     const vData = await hRes.json();
     const client_id = vData.client_id;
     const user_id = vData.user_id;
 
-    let profile = { login: vData.login, display_name: vData.login };
+    // Lisansı kontrol et ve kullan
+    const used = await db.useLicense(licenseCode, vData.login);
+    if (!used) throw new Error('Geçersiz veya daha önce kullanılmış Lisans Kodu!');
 
-    // Kullanıcı detaylarını çek
+    let profile = { login: vData.login, display_name: vData.login };
     const uRes = await fetch(`https://api.twitch.tv/helix/users?id=${user_id}`, {
       headers: { 'Authorization': `Bearer ${token}`, 'Client-Id': client_id }
     }).catch(() => null);
 
     if (uRes && uRes.ok) {
       const uData = await uRes.json();
-      if (uData.data && uData.data[0]) {
-        profile = uData.data[0];
-      }
+      if (uData.data && uData.data[0]) profile = uData.data[0];
     }
 
     const newUser = await db.addUser({
@@ -130,68 +121,88 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// Kullanıcı Sil
-app.delete('/api/users/:login', async (req, res) => {
+// Müşterinin Sadece Kendi İstatistiğini Görmesi
+app.get('/api/mystats/:login', (req, res) => {
+  const { login } = req.params;
+  const user = db.getUser(login);
+  if (!user) return res.status(404).json({ error: 'Sistemde böyle bir kullanıcı yok. Satın alım yaptıysanız lütfen kaydolun.' });
+  
+  const bot = bots.get(login);
+  res.json({
+    login: user.login,
+    display_name: user.display_name,
+    profile_image_url: user.profile_image_url,
+    isRunning: user.isRunning,
+    stats: bot ? bot.getStats() : null
+  });
+});
+
+
+// ── ADMIN API'LERİ ──
+
+app.get('/api/admin/users', requireAdmin, (req, res) => {
+  const users = db.getUsers().map(u => {
+    const bot = bots.get(u.login);
+    return { ...u, stats: bot ? bot.getStats() : null };
+  });
+  res.json(users);
+});
+
+app.delete('/api/admin/users/:login', requireAdmin, async (req, res) => {
   const { login } = req.params;
   await stopBotForUser(login);
   await db.removeUser(login);
-  res.json({ ok: true, message: 'Kullanıcı silindi.' });
+  res.json({ ok: true });
   broadcast({ type: 'refresh_users' });
 });
 
-// Bot Başlat
-app.post('/api/start/:login', async (req, res) => {
+app.post('/api/admin/start/:login', requireAdmin, async (req, res) => {
   const { login } = req.params;
   const user = db.getUser(login);
-  if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
-  if (bots.has(login)) return res.status(400).json({ error: 'Bot zaten çalışıyor.' });
-
+  if (!user) return res.status(404).json({ error: 'Bulunamadı' });
   await startBotForUser(user);
-  res.json({ ok: true, message: 'Bot başlatıldı.' });
+  res.json({ ok: true });
   broadcast({ type: 'refresh_users' });
 });
 
-// Bot Durdur
-app.post('/api/stop/:login', async (req, res) => {
+app.post('/api/admin/stop/:login', requireAdmin, async (req, res) => {
   const { login } = req.params;
-  if (!bots.has(login)) return res.status(400).json({ error: 'Bot zaten çalışmıyor.' });
-
   await stopBotForUser(login);
-  res.json({ ok: true, message: 'Bot durduruldu.' });
+  res.json({ ok: true });
   broadcast({ type: 'refresh_users' });
 });
 
-// Sunucuyu (PM2) Yeniden Başlat
-app.post('/api/restart-server', (req, res) => {
-  res.json({ ok: true, message: 'Sunucu yeniden başlatılıyor...' });
+app.post('/api/admin/restart', requireAdmin, (req, res) => {
+  res.json({ ok: true });
   setTimeout(() => process.exit(1), 1000);
 });
 
-// ── BAŞLATMA ve WEBSOCKET ────────────────────────────────────
+// Lisans Kodları
+app.get('/api/admin/licenses', requireAdmin, (req, res) => {
+  res.json(db.getLicenses());
+});
+
+app.post('/api/admin/licenses', requireAdmin, async (req, res) => {
+  const code = 'ITEM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+  await db.addLicense(code);
+  res.json({ ok: true, code });
+});
+
+
+// ── BAŞLATMA ve WEBSOCKET ──
 
 const server = app.listen(PORT, async () => {
-  console.log(`[SİSTEM] Web yönetim paneli http://localhost:${PORT} üzerinde çalışıyor.`);
-  
-  // Veritabanını yükle
+  console.log(`[SİSTEM] Web panel http://localhost:${PORT} üzerinde çalışıyor.`);
   await db.load();
-  console.log(`[SİSTEM] Veritabanı yüklendi. Kayıtlı kullanıcı: ${db.getUsers().length}`);
-
-  // Paylaşımlı tarayıcıyı başlat
   await initSharedBrowser();
-
-  // Otomatik başlatma (Önceden çalışanları geri aç)
   const users = db.getUsers();
   for (const u of users) {
-    if (u.isRunning) {
-      console.log(`[SİSTEM] ${u.login} botu otomatik başlatılıyor...`);
-      await startBotForUser(u);
-    }
+    if (u.isRunning) await startBotForUser(u);
   }
 });
 
 const wss = new WebSocketServer({ server });
 const clients = new Set();
-
 wss.on('connection', ws => {
   clients.add(ws);
   ws.on('close', () => clients.delete(ws));

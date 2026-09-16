@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Twitch Drops SaaS – Yönetim Paneli</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* SaaS Özel Tasarım Eklemeleri */
+    .saas-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .add-user-box { display: flex; gap: 10px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+    .add-user-box input { flex: 1; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px; border-radius: 6px; }
+    .users-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+    
+    .user-card { background: rgba(20,20,30,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 15px; position: relative; }
+    .uc-header { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; margin-bottom: 12px; }
+    .uc-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+    .uc-info { flex: 1; }
+    .uc-name { font-weight: 600; font-size: 1.1rem; }
+    .uc-login { color: var(--text-muted); font-size: 0.85rem; }
+    .uc-status { font-size: 0.8rem; padding: 3px 8px; border-radius: 20px; background: rgba(255,255,255,0.1); }
+    .uc-status.online { background: rgba(0, 255, 128, 0.2); color: #00ff80; }
+    
+    .uc-stats { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 0.9rem; }
+    .uc-stat-col { display: flex; flex-direction: column; }
+    .uc-stat-val { font-family: 'JetBrains Mono', monospace; font-weight: bold; color: var(--accent); }
+    
+    .uc-actions { display: flex; gap: 8px; }
+    .uc-actions button { flex: 1; padding: 8px; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; }
+    .btn-play { background: rgba(0, 255, 128, 0.2); color: #00ff80; }
+    .btn-stop { background: rgba(255, 69, 69, 0.2); color: #ff4545; }
+    .btn-del { background: transparent; color: #ff4545; flex: 0 0 auto !important; border: 1px solid rgba(255,69,69,0.3) !important; }
+    
+    .uc-progress { margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); }
+    .uc-progress-bar { width: 100%; height: 6px; background: rgba(0,0,0,0.3); border-radius: 3px; margin-top: 4px; overflow: hidden; }
+    .uc-progress-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; }
+  </style>
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+
+  <div class="app-wrap" style="max-width: 1200px;">
+    
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="brand-text">
+          <span class="brand-name">Twitch SaaS</span>
+          <span class="brand-sub">Multi-Tenant Yönetimi</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button class="reset-link" id="btnRestartServer" style="color: #ff4d4d; border: 1px solid #ff4d4d; padding: 6px 12px; border-radius: 6px;">⚡ Sunucuyu Yeniden Başlat</button>
+      </div>
+    </header>
+
+    <main style="padding: 20px 0;">
+      
+      <div class="add-user-box glass" style="flex-direction: column; gap: 15px;">
+        <div style="display:flex; gap:10px;">
+           <button class="btn" id="btnGenLicense" style="background: #ffaa00; border-color: #ffaa00; flex:1;">🔑 Yeni Lisans (İtemSatış) Üret</button>
+           <button class="btn" id="btnAutoCode" style="background: var(--accent); border-color: var(--accent); flex:1;">🧩 Müşteriye Kod Gönder</button>
+        </div>
+        <div id="licenseList" style="color:#aaa; font-size:0.9em; max-height:100px; overflow-y:auto;"></div>
+      </div>
+
+      <div class="users-grid" id="usersGrid">
+        <!-- Kullanıcı Kartları Buraya Gelecek -->
+      </div>
+
+    </main>
+
+  </div>
+  
+  <script src="admin.js"></script>
+</body>
+</html>

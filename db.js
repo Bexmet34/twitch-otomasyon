@@ -8,7 +8,7 @@ const DB_FILE = path.join(__dirname, 'database.json');
 
 class Database {
   constructor() {
-    this.data = { users: [] };
+    this.data = { users: [], licenses: [] };
   }
   
   async load() {
@@ -58,6 +58,31 @@ class Database {
       u.isRunning = isRunning;
       await this.save();
     }
+  }
+
+  // ── LİSANS YÖNETİMİ ──
+  
+  getLicenses() {
+    return this.data.licenses || [];
+  }
+
+  async addLicense(code) {
+    if (!this.data.licenses) this.data.licenses = [];
+    this.data.licenses.push({ code, used: false, usedBy: null });
+    await this.save();
+    return code;
+  }
+
+  async useLicense(code, login) {
+    if (!this.data.licenses) return false;
+    const lic = this.data.licenses.find(l => l.code === code && !l.used);
+    if (lic) {
+      lic.used = true;
+      lic.usedBy = login;
+      await this.save();
+      return true;
+    }
+    return false;
   }
 }
 
