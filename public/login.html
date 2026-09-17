@@ -61,7 +61,7 @@
       <label>Şifreniz</label>
       <div class="password-wrapper">
         <input type="password" id="logPass" placeholder="••••••••" />
-        <span class="password-toggle" onclick="togglePassword('logPass', this)">👁️</span>
+        <span class="password-toggle" onclick="togglePassword('logPass', this)">🙈</span>
       </div>
       
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 0.9rem;">
@@ -86,14 +86,14 @@
           <label>Hesap Şifresi Belirleyin</label>
           <div class="password-wrapper" style="margin-bottom: 0;">
             <input type="password" id="regPass" placeholder="Güçlü bir şifre seçin" onkeyup="checkPasswordMatch()" />
-            <span class="password-toggle" onclick="togglePassword('regPass', this)">👁️</span>
+            <span class="password-toggle" onclick="togglePassword('regPass', this)">🙈</span>
           </div>
         </div>
         <div>
           <label>Şifrenizi Tekrar Girin</label>
           <div class="password-wrapper" style="margin-bottom: 0;">
             <input type="password" id="regPass2" placeholder="Şifrenizi doğrulayın" onkeyup="checkPasswordMatch()" />
-            <span class="password-toggle" onclick="togglePassword('regPass2', this)">👁️</span>
+            <span class="password-toggle" onclick="togglePassword('regPass2', this)">🙈</span>
           </div>
         </div>
       </div>
@@ -105,24 +105,29 @@
       <label>Twitch Auth-Token</label>
       <div class="password-wrapper">
         <input type="password" id="regToken" placeholder="Twitch gizli auth-token değeriniz" />
-        <span class="password-toggle" onclick="togglePassword('regToken', this)">👁️</span>
+        <span class="password-toggle" onclick="togglePassword('regToken', this)">🙈</span>
       </div>
       
-      <div class="f12-guide">
-        <b style="color:#fff; font-size:1.1rem; display:block; margin-bottom:10px;">Auth-Token Nasıl Alınır?</b>
-        1. <b>twitch.tv</b>'ye gidin ve hesabınıza giriş yapın.<br/><br/>
-        2. Klavyeden <b>F12</b> tuşuna basıp geliştirici seçeneklerini açın.<br/><br/>
-        <img src="images/auth_guide.jpg" alt="Auth Guide" class="instruction-img" style="margin-top:0; margin-bottom:15px;" />
-        3. Üstten <b>Console</b> (Konsol) sekmesine tıklayın.<br/><br/>
-        4. Aşağıdaki kodu kopyalayıp Console'a yapıştırın ve Enter'a basın:<br/>
-        <code>document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1]</code>
+      <div class="f12-guide" id="tokenGuideWrap">
+        <button type="button" class="btn" style="width:100%; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#fff; font-size:0.95rem; padding:10px; margin-bottom:10px;" onclick="document.getElementById('tokenGuideContent').style.display = document.getElementById('tokenGuideContent').style.display === 'none' ? 'block' : 'none'">📖 Auth-Token Nasıl Alınır? (Resimli Anlatım)</button>
         
-        <img src="images/devtools_console.jpg" alt="DevTools Console Örneği" class="instruction-img" />
-        
-        <div style="margin-top:15px; padding:15px; background:rgba(255,69,69,0.1); border-left: 4px solid #ff4545; border-radius:6px; font-size:0.9rem; color:#ffbaba; line-height:1.4;">
-          <b style="color:#ff4545; display:block; margin-bottom:5px;">⚠️ DİKKAT:</b> 
-          Tarayıcınız güvenliğiniz için yapıştırmaya izin vermeyebilir. Eğer Console'da kırmızı bir uyarı görürseniz, önce Console'a <b>allow pasting</b> yazıp Enter'a basın, ardından yukarıdaki token kodunu tekrar yapıştırın.
-          <img src="images/allow_pasting.jpg" alt="Allow Pasting Uyarısı" class="instruction-img" style="margin-top:10px; margin-bottom:0;" />
+        <div id="tokenGuideContent" style="display:none; text-align:left; margin-top:15px; padding-top:15px; border-top:1px dashed rgba(255,255,255,0.2);">
+          1. <b>twitch.tv</b>'ye gidin ve hesabınıza giriş yapın.<br/><br/>
+          2. Klavyeden <b>F12</b> tuşuna basıp geliştirici seçeneklerini açın.<br/><br/>
+          3. Üstten <b>Console</b> (Konsol) sekmesine tıklayın.<br/><br/>
+          4. Aşağıdaki kodu kopyalayıp Console'a yapıştırın ve Enter'a basın:<br/>
+          <code>document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1]</code>
+          
+          <div style="margin-top:15px; padding:15px; background:rgba(255,69,69,0.1); border-left: 4px solid #ff4545; border-radius:6px; font-size:0.9rem; color:#ffbaba; line-height:1.4;">
+            <b style="color:#ff4545; display:block; margin-bottom:5px;">⚠️ DİKKAT:</b> 
+            Tarayıcınız güvenliğiniz için yapıştırmaya izin vermeyebilir. Eğer Console'da kırmızı bir uyarı görürseniz, önce Console'a <b>allow pasting</b> yazıp Enter'a basın, ardından yukarıdaki token kodunu tekrar yapıştırın.
+          </div>
+
+          <div style="margin-top:20px; display:flex; flex-direction:column; gap:15px;">
+            <img src="images/allow_pasting.jpg" alt="Allow Pasting Uyarısı" class="instruction-img" style="margin:0;" />
+            <img src="images/devtools_console.jpg" alt="DevTools Console Örneği" class="instruction-img" style="margin:0;" />
+            <img src="images/auth_guide.jpg" alt="Genel Auth Guide" class="instruction-img" style="margin:0;" />
+          </div>
         </div>
       </div>
 
@@ -160,10 +165,10 @@
       const input = document.getElementById(inputId);
       if (input.type === "password") {
         input.type = "text";
-        iconEl.textContent = "🙈";
+        iconEl.textContent = "👁️";
       } else {
         input.type = "password";
-        iconEl.textContent = "👁️";
+        iconEl.textContent = "🙈";
       }
     }
 
