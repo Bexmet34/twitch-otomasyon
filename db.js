@@ -47,6 +47,14 @@ class Database {
     return this.getUser(user.login);
   }
 
+  async updateUser(user) {
+    const exists = this.getUser(user.login);
+    if (exists) {
+      Object.assign(exists, user);
+      await this.save();
+    }
+  }
+
   async removeUser(login) {
     this.data.users = this.data.users.filter(u => u.login !== login);
     await this.save();
