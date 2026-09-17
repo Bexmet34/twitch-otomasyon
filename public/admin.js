@@ -140,6 +140,7 @@ function renderUsers() {
          <div style="display:flex; gap:5px; flex-direction:column; align-items:flex-end;">
             <button class="btn" style="background:#ff4545; padding:5px 10px; font-size:0.75rem;" onclick="deleteUser('${u.login}')">Sil</button>
             <button class="btn" style="background:var(--purple); padding:5px 10px; font-size:0.75rem;" onclick="addTime('${u.login}')">+ Süre Ekle</button>
+            <button class="btn" style="background:#555; padding:5px 10px; font-size:0.75rem; color:#fff;" onclick="resetTime('${u.login}')">Süreyi Sıfırla</button>
          </div>
       </div>
       <div class="user-stats" style="margin-top:15px; font-size:0.9rem; color:#aaa;">
@@ -174,6 +175,23 @@ async function addTime(login) {
   const data = await res.json();
   if (data.ok) {
      alert('Süre başarıyla eklendi!');
+     fetchUsers();
+  } else {
+     alert('Hata: ' + (data.error || 'Bilinmiyor'));
+  }
+}
+
+async function resetTime(login) {
+  if(!confirm(`${login} kullanıcısının süresini sıfırlayıp botunu durdurmak istediğinize emin misiniz?`)) return;
+  
+  const res = await fetch(`/api/admin/users/${login}/reset-time`, {
+    method: 'POST',
+    headers: { 'x-admin-password': adminPass }
+  });
+  
+  const data = await res.json();
+  if (data.ok) {
+     alert('Kullanıcının süresi doldu ve bot durduruldu.');
      fetchUsers();
   } else {
      alert('Hata: ' + (data.error || 'Bilinmiyor'));

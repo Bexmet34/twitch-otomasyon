@@ -199,6 +199,22 @@ app.post('/api/admin/users/:login/add-time', requireAdmin, async (req, res) => {
   broadcast({ type: 'refresh_users' });
 });
 
+app.post('/api/admin/users/:login/reset-time', requireAdmin, async (req, res) => {
+  const { login } = req.params;
+  const user = db.getUser(login);
+  if (!user) return res.status(404).json({ error: 'Müşteri bulunamadı' });
+  
+  // Süreyi anında bitmiş göster (Geçmiş bir zaman ver)
+  user.expiresAt = Date.now() - 1000; 
+  await db.updateUser(user);
+  
+  // Anında botu durdur
+  await stopBotForUser(login);
+  
+  res.json({ ok: true });
+  broadcast({ type: 'refresh_users' });
+});
+
 app.post('/api/admin/start/:login', requireAdmin, async (req, res) => {
   const { login } = req.params;
   const user = db.getUser(login);
