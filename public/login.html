@@ -48,6 +48,14 @@
       <label>Şifreniz</label>
       <input type="password" id="logPass" placeholder="••••••••" />
       
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 0.9rem;">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-muted); font-weight: normal; margin: 0;">
+          <input type="checkbox" id="logRemember" checked style="width: auto; margin: 0;" />
+          Beni Hatırla (30 Gün)
+        </label>
+        <a href="#" onclick="alert('Şifrenizi sıfırlamak için lütfen İtemSatış mesajları veya Discord üzerinden yöneticinize ulaşın.')" style="color: var(--cyan); text-decoration: none;">Şifremi Unuttum?</a>
+      </div>
+
       <button id="btnLoginAction" class="btn" style="width:100%; font-size:1.1rem; padding:15px;">Giriş Yap</button>
     </div>
 
@@ -59,6 +67,9 @@
       
       <label>Hesap Şifresi Belirleyin</label>
       <input type="password" id="regPass" placeholder="Güçlü bir şifre seçin" />
+
+      <label>Şifrenizi Tekrar Girin</label>
+      <input type="password" id="regPass2" placeholder="Şifrenizi doğrulayın" />
       
       <label>İtemSatış Lisans Kodunuz (14 Hane)</label>
       <input type="text" id="regLicense" placeholder="Örn: 1M-X94B2C3D4E5" />
@@ -71,8 +82,12 @@
         1. <b>twitch.tv</b>'ye gidin ve hesabınıza giriş yapın.<br/>
         2. Klavyeden <b>F12</b> tuşuna basıp geliştirici seçeneklerini açın.<br/>
         3. Üstten <b>Console</b> (Konsol) sekmesine tıklayın.<br/>
-        4. Aşağıdaki kodu yapıştırıp Enter'a basın. Ekrana tokenınız gelecektir, kopyalayıp üstteki kutuya yapıştırın:
+        4. Aşağıdaki kodu kopyalayıp Console'a yapıştırın ve Enter'a basın:<br/>
         <code>document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1]</code>
+        
+        <div style="margin-top:10px; padding:10px; background:rgba(255,69,69,0.1); border-left: 3px solid #ff4545; border-radius:4px; font-size:0.85rem; color:#ffbaba;">
+          <b>⚠️ DİKKAT:</b> Tarayıcınız güvenliğiniz için yapıştırmaya izin vermeyebilir. Eğer Console'da kırmızı bir uyarı görürseniz, önce Console'a <b>allow pasting</b> yazıp Enter'a basın, ardından yukarıdaki token kodunu tekrar yapıştırın.
+        </div>
       </div>
 
       <button id="btnRegAction" class="btn" style="width:100%; font-size:1.1rem; padding:15px; background:var(--accent); color:#000;">Kayıt Ol ve Botu Başlat</button>
@@ -80,7 +95,8 @@
   </div>
 
   <script>
-    if(localStorage.getItem('login')) window.location.href = 'dashboard.html';
+    const savedUser = localStorage.getItem('login') || sessionStorage.getItem('login');
+    if(savedUser) window.location.href = 'dashboard.html';
 
     const $ = id => document.getElementById(id);
 
@@ -117,7 +133,11 @@
         });
         const d = await r.json();
         if(d.ok) {
-          localStorage.setItem('login', d.login);
+          if ($('logRemember').checked) {
+             localStorage.setItem('login', d.login);
+          } else {
+             sessionStorage.setItem('login', d.login);
+          }
           window.location.href = 'dashboard.html';
         } else {
           alert(d.error);
@@ -129,10 +149,12 @@
     $('btnRegAction').onclick = async () => {
       const email = $('regEmail').value.trim();
       const password = $('regPass').value;
+      const pass2 = $('regPass2').value;
       const licenseCode = $('regLicense').value.trim();
       const token = $('regToken').value.trim();
       
-      if(!email || !password || !licenseCode || !token) return alert("Boş alan bırakmayın.");
+      if(!email || !password || !pass2 || !licenseCode || !token) return alert("Boş alan bırakmayın.");
+      if(password !== pass2) return alert("Şifreler uyuşmuyor! Lütfen iki şifreyi de aynı girin.");
       
       $('btnRegAction').textContent = 'Hesap Kuruluyor...';
       try {

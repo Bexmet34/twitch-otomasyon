@@ -32,9 +32,6 @@ async function initAdmin() {
 // Uygulamayı başlat
 initAdmin();
 
-const $ = id => document.getElementById(id);
-const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
 let ws;
 let users = [];
 
