@@ -137,7 +137,10 @@ function renderUsers() {
                <div class="status ${hasBot ? 'status-active' : 'status-inactive'}">${hasBot ? 'Aktif' : 'Pasif'}</div>
             </div>
          </div>
-         <button class="btn" style="background:#ff4545; padding:5px 10px; font-size:0.8rem;" onclick="deleteUser('${u.login}')">Sil</button>
+         <div style="display:flex; gap:5px; flex-direction:column; align-items:flex-end;">
+            <button class="btn" style="background:#ff4545; padding:5px 10px; font-size:0.75rem;" onclick="deleteUser('${u.login}')">Sil</button>
+            <button class="btn" style="background:var(--purple); padding:5px 10px; font-size:0.75rem;" onclick="addTime('${u.login}')">+ Süre Ekle</button>
+         </div>
       </div>
       <div class="user-stats" style="margin-top:15px; font-size:0.9rem; color:#aaa;">
          <p><b>E-Posta:</b> ${esc(u.email || 'Bilinmiyor')}</p>
@@ -156,6 +159,25 @@ function renderUsers() {
 async function startBot(login) { 
   await fetch(`/api/admin/start/${login}`, { method: 'POST', headers: { 'x-admin-password': adminPass } }); 
   fetchUsers();
+}
+
+async function addTime(login) {
+  const days = prompt(`${login} adlı kullanıcıya kaç GÜN eklemek istiyorsunuz? (Örn: 7, 30)`);
+  if (!days || isNaN(days) || parseInt(days) <= 0) return;
+  
+  const res = await fetch(`/api/admin/users/${login}/add-time`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPass },
+    body: JSON.stringify({ days: parseInt(days) })
+  });
+  
+  const data = await res.json();
+  if (data.ok) {
+     alert('Süre başarıyla eklendi!');
+     fetchUsers();
+  } else {
+     alert('Hata: ' + (data.error || 'Bilinmiyor'));
+  }
 }
 
 async function stopBot(login) { 

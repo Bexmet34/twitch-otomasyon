@@ -182,6 +182,23 @@ app.delete('/api/admin/users/:login', requireAdmin, async (req, res) => {
   broadcast({ type: 'refresh_users' });
 });
 
+app.post('/api/admin/users/:login/add-time', requireAdmin, async (req, res) => {
+  const { login } = req.params;
+  const days = parseInt(req.body.days);
+  if (!days || days <= 0) return res.status(400).json({ error: 'Geçersiz gün sayısı' });
+  
+  const user = db.getUser(login);
+  if (!user) return res.status(404).json({ error: 'Müşteri bulunamadı' });
+  
+  // Eğer kullanıcının süresi çoktan bitmişse, bugünden itibaren başlat, bitmemişse mevcut süresinin üstüne ekle
+  const currentExpiry = (user.expiresAt && user.expiresAt > Date.now()) ? user.expiresAt : Date.now();
+  user.expiresAt = currentExpiry + (days * 24 * 60 * 60 * 1000);
+  
+  await db.updateUser(user);
+  res.json({ ok: true, expiresAt: user.expiresAt });
+  broadcast({ type: 'refresh_users' });
+});
+
 app.post('/api/admin/start/:login', requireAdmin, async (req, res) => {
   const { login } = req.params;
   const user = db.getUser(login);
