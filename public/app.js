@@ -123,7 +123,37 @@ function renderStats(u) {
   
   $('uiUptime').textContent = formatTimeLeft(u.expiresAt);
 
+  // Süresi dolduysa Lisans Kodu girme alanını göster
+  const timeLeftMs = new Date(u.expiresAt).getTime() - Date.now();
+  if (timeLeftMs <= 0) {
+     $('uiUptime').style.color = '#ff4545';
+     $('uiRenewSection').style.display = 'flex';
+  } else {
+     $('uiUptime').style.color = '#fff';
+     $('uiRenewSection').style.display = 'none';
+  }
+
   renderInventory(s.inventory, s.dropName, s.dropProgress);
+}
+
+async function renewLicense() {
+  const code = $('renewCode').value.trim();
+  if (!code) return alert('Lütfen geçerli bir lisans kodu girin!');
+  
+  const res = await fetch('/api/user/renew', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ login: currentLogin, licenseCode: code })
+  });
+  
+  const data = await res.json();
+  if (data.ok) {
+     alert('Lisansınız başarıyla yenilendi! Botunuz başlatılıyor...');
+     $('renewCode').value = '';
+     fetchStats(currentLogin);
+  } else {
+     alert('Hata: ' + (data.error || 'Bilinmiyor'));
+  }
 }
 
 function renderInventory(invList, currentName, currentProg) {

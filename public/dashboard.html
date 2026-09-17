@@ -147,6 +147,12 @@
           <div class="stat-box">
             <div style="color:var(--text-muted); font-size:0.9rem;">Kalan Süre</div>
             <div class="val" id="uiUptime">00:00</div>
+            
+            <!-- Süre Uzatma Alanı (Sadece Süre Bitince veya İstenirse Çıkar) -->
+            <div id="uiRenewSection" style="margin-top:10px; display:flex; gap:5px; align-items:center;">
+               <input type="text" id="renewCode" placeholder="Yeni Lisans Kodu" style="flex:1; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:4px; font-size:0.8rem;" />
+               <button onclick="renewLicense()" style="padding:6px 12px; background:var(--purple); color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.8rem;">Uzat</button>
+            </div>
           </div>
         </div>
 

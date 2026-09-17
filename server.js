@@ -69,6 +69,34 @@ async function stopBotForUser(login) {
   await db.updateStatus(login, false);
 }
 
+app.post('/api/user/renew', async (req, res) => {
+  const { login, licenseCode } = req.body;
+  if (!login || !licenseCode) return res.status(400).json({ error: 'Kullanıcı adı ve Lisans Kodu zorunludur.' });
+  
+  try {
+    const user = db.getUser(login);
+    if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+
+    const durationDays = await db.useLicense(licenseCode, login);
+    if (!durationDays) throw new Error('Geçersiz veya daha önce kullanılmış Lisans Kodu!');
+
+    const currentExpires = (user.expiresAt && user.expiresAt > Date.now()) ? user.expiresAt : Date.now();
+    user.expiresAt = currentExpires + (durationDays * 24 * 60 * 60 * 1000);
+    
+    await db.updateUser(user);
+    
+    // Eğer bot çalışmıyorsa yeniden başlat (çünkü süresi dolduğu için kapanmıştır)
+    if (!bots.has(login)) {
+       await startBotForUser(user);
+    }
+    
+    res.json({ ok: true, expiresAt: user.expiresAt });
+    broadcast({ type: 'refresh_users' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // ── ADMIN GÜVENLİĞİ MIDDLEWARE ──
 function requireAdmin(req, res, next) {
   const pass = req.headers['x-admin-password'];
