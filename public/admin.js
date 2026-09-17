@@ -94,11 +94,10 @@ function updateLiveStats(statsData) {
   renderUsers();
 }
 
-function formatUptime(startedAt) {
-  if(!startedAt) return '—';
-  const d = Date.now() - new Date(startedAt).getTime();
-  const h = String(Math.floor(d / 3600000)).padStart(2,'0');
-  const m = String(Math.floor((d % 3600000) / 60000)).padStart(2,'0');
+function formatUptime(uptimeMs) {
+  if(!uptimeMs || uptimeMs <= 0) return '00:00';
+  const h = String(Math.floor(uptimeMs / 3600000)).padStart(2,'0');
+  const m = String(Math.floor((uptimeMs % 3600000) / 60000)).padStart(2,'0');
   return `${h}:${m}`;
 }
 

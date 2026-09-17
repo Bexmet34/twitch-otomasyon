@@ -72,7 +72,13 @@ export class TwitchDropsBot {
     this.log('info', '🛑 Bot durduruldu.');
   }
 
-  getStats() { return { ...this.stats, running: this.running }; }
+  getStats() {
+    let uptimeMs = 0;
+    if (this.running && this.stats.startedAt) {
+        uptimeMs = Date.now() - new Date(this.stats.startedAt).getTime();
+    }
+    return { ...this.stats, running: this.running, uptimeMs }; 
+  }
 
   // ── MAIN LOOP ───────────────────────────────────────────
 
