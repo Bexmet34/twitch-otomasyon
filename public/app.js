@@ -123,15 +123,16 @@ function renderStats(u) {
   
   $('uiUptime').textContent = formatTimeLeft(u.expiresAt);
 
-  // Süresi dolduysa Lisans Kodu girme alanını göster
+  // Kalan Süre rengini ayarla (Süre bittiyse kırmızı)
   const timeLeftMs = new Date(u.expiresAt).getTime() - Date.now();
   if (timeLeftMs <= 0) {
      $('uiUptime').style.color = '#ff4545';
-     $('uiRenewSection').style.display = 'flex';
   } else {
      $('uiUptime').style.color = '#fff';
-     $('uiRenewSection').style.display = 'none';
   }
+  
+  // Süre bitse de bitmese de uzatma alanı her zaman açık kalacak
+  $('uiRenewSection').style.display = 'flex';
 
   renderInventory(s.inventory, s.dropName, s.dropProgress);
 }
