@@ -5,6 +5,7 @@ let checkInterval = null;
 let currentLogin = null;
 let ws = null;
 let isFirstLoad = true;
+let lastInventoryHash = null; // Envanter değişmediğinde DOM'u korumak için
 
 const loginSession = localStorage.getItem('login') || sessionStorage.getItem('login');
 if (!loginSession) {
@@ -143,7 +144,11 @@ async function renewLicense() {
 
 function renderInventory(invList, currentName, currentProg) {
   const grid = $('uiInventory');
+  
   if (!invList || invList.length === 0) {
+    const emptyHash = '__empty__';
+    if (lastInventoryHash === emptyHash) return; // Değişmedi, dokunma
+    lastInventoryHash = emptyHash;
     grid.innerHTML = `
       <div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text-muted); font-size:0.95rem;">
         <div style="font-size:2.5rem; margin-bottom:12px;">📦</div>
@@ -153,45 +158,63 @@ function renderInventory(invList, currentName, currentProg) {
     return;
   }
 
-  grid.innerHTML = invList.map(item => {
-    let p = item.progress || 0;
-    // Eğer bu item aktif toplanan item ise, canlı progress'i kullan
-    if (currentName && item.name === currentName) {
-       p = currentProg || p;
-    }
-    const isCompleted = p >= 100 || item.name.includes('(Alındı)');
-    const isExpired   = item.name.includes('(Süresi Bitti)');
-    const isActive    = !isCompleted && !isExpired && currentName && item.name === currentName;
+  // Envanter listesinin "imzasını" çıkar: isimler + resimler (progress haric, o ayrı güncelleniyor)
+  const structureHash = invList.map(i => `${i.name}|${i.image}`).join(',');
+  
+  if (structureHash !== lastInventoryHash) {
+    // Yapı değişti: tüm kartları yeniden çiz
+    lastInventoryHash = structureHash;
+    
+    grid.innerHTML = invList.map(item => {
+      let p = item.progress || 0;
+      if (currentName && item.name === currentName) p = currentProg || p;
+      const isCompleted = p >= 100 || item.name.includes('(Alındı)');
+      const isExpired   = item.name.includes('(Süresi Bitti)');
+      const isActive    = !isCompleted && !isExpired && currentName && item.name === currentName;
 
-    const cardClass = isCompleted ? 'drop-card completed' : isExpired ? 'drop-card expired' : 'drop-card';
-    const fillClass = isCompleted ? 'drop-progress-fill done' : 'drop-progress-fill';
-    const pctLabel  = isCompleted ? '<span class="drop-pct-label done">✔ Tamamlandı</span>' : `<span class="drop-pct-label">%${p}</span>`;
+      const cardClass = isCompleted ? 'drop-card completed' : isExpired ? 'drop-card expired' : 'drop-card';
+      const fillClass = isCompleted ? 'drop-progress-fill done' : 'drop-progress-fill';
+      const pctLabel  = isCompleted ? '<span class="drop-pct-label done">✔ Tamamlandı</span>' : `<span class="drop-pct-label">%${p}</span>`;
+      const activeBadge  = isActive  ? '<span class="drop-active-badge">● AKTİF</span>' : '';
+      const expiredBadge = isExpired ? '<span class="drop-expired-badge">× Bitti</span>'  : '';
+      const pctBadge     = !isCompleted ? `<span class="drop-pct-badge">%${p}</span>` : '';
+      const imgSrc = item.image || 'https://static-cdn.jtvnw.net/drops/fallback.png';
+      const displayName = esc(item.name.replace(' (Alındı)', '').replace(' (Süresi Bitti)', ''));
+      const suffix = isCompleted ? ' ✔' : isExpired ? ' (Sona Erdi)' : '';
+      const safeId = 'drop_' + btoa(encodeURIComponent(item.name + (item.image||''))).replace(/[^a-z0-9]/gi,'').slice(0,20);
 
-    const activeBadge  = isActive    ? '<span class="drop-active-badge">● AKTİF</span>'  : '';
-    const expiredBadge = isExpired   ? '<span class="drop-expired-badge">× Bitti</span>'  : '';
-    const doneBadge    = isCompleted ? '' : '';
-    const pctBadge     = !isCompleted ? `<span class="drop-pct-badge">%${p}</span>` : '';
-
-    const imgSrc = item.image || 'https://static-cdn.jtvnw.net/drops/fallback.png';
-    const displayName = esc(item.name.replace(' (Alındı)', '').replace(' (Süresi Bitti)', ''));
-    const suffix = isCompleted ? ' ✔' : isExpired ? ' (Sona Erdi)' : '';
-
-    return `
-      <div class="${cardClass}">
-        <div class="drop-img-wrap">
-          <img class="drop-img" src="${imgSrc}" alt="${displayName}" loading="lazy" />
-          ${activeBadge}${expiredBadge}${pctBadge}
-        </div>
-        <div class="drop-body">
-          <div class="drop-name">${displayName}${suffix}</div>
-          <div class="drop-progress-track">
-            <div class="${fillClass}" style="width:${Math.min(p,100)}%"></div>
+      return `
+        <div class="${cardClass}" id="${safeId}">
+          <div class="drop-img-wrap">
+            <img class="drop-img" src="${imgSrc}" alt="${displayName}" loading="lazy" />
+            ${activeBadge}${expiredBadge}${pctBadge}
           </div>
-          ${pctLabel}
+          <div class="drop-body">
+            <div class="drop-name">${displayName}${suffix}</div>
+            <div class="drop-progress-track">
+              <div class="${fillClass}" id="${safeId}_fill" style="width:${Math.min(p,100)}%"></div>
+            </div>
+            <span class="drop-pct-label${isCompleted?' done':''}" id="${safeId}_pct">${isCompleted ? '✔ Tamamlandı' : '%'+p}</span>
+          </div>
         </div>
-      </div>
-    `;
-  }).join('');
+      `;
+    }).join('');
+    
+  } else {
+    // Yapı aynı: sadece progress barları ve yüzdeleri güncelle (DOM yeniden yazma YOK)
+    invList.forEach(item => {
+      let p = item.progress || 0;
+      if (currentName && item.name === currentName) p = currentProg || p;
+      const isCompleted = p >= 100 || item.name.includes('(Alındı)');
+      const safeId = 'drop_' + btoa(encodeURIComponent(item.name + (item.image||''))).replace(/[^a-z0-9]/gi,'').slice(0,20);
+      
+      const fillEl = $(safeId + '_fill');
+      const pctEl  = $(safeId + '_pct');
+      
+      if (fillEl) fillEl.style.width = Math.min(p, 100) + '%';
+      if (pctEl)  pctEl.textContent = isCompleted ? '✔ Tamamlandı' : '%' + p;
+    });
+  }
 }
 
 // Canlı Loglar (WebSocket)

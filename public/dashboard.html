@@ -23,18 +23,8 @@
     .profile-avatar {
       width: 90px; height: 90px; border-radius: 50%; object-fit: cover;
       border: 3px solid rgba(145,71,255,0.5);
-      box-shadow: 0 0 0 4px rgba(145,71,255,0.12), 0 0 30px rgba(145,71,255,0.3);
+      box-shadow: 0 0 0 5px rgba(145,71,255,0.1), 0 0 25px rgba(145,71,255,0.2);
     }
-    .profile-ring {
-      position: absolute; inset: -6px; border-radius: 50%;
-      border: 2px solid transparent;
-      background: linear-gradient(135deg, #9147ff, #00e5ff) border-box;
-      -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-      mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: destination-out; mask-composite: exclude;
-      animation: ringRotate 4s linear infinite;
-    }
-    @keyframes ringRotate { to { transform: rotate(360deg); } }
     .profile-name { font-size: 1.6rem; font-weight: 800; color: #fff; letter-spacing: 0.5px; }
     .uc-status { font-size: 0.8rem; padding: 5px 14px; border-radius: 20px; background: rgba(255,255,255,0.08); display: inline-block; margin-top: 2px; }
     .uc-status.online { background: rgba(0,230,118,0.15); color: #00e676; border: 1px solid rgba(0,230,118,0.3); }
@@ -58,7 +48,7 @@
 
     /* Kanal thumbnail */
     .channel-thumb-wrap { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 8px; }
-    .channel-thumb { width: 72px; height: 42px; border-radius: 6px; object-fit: cover; border: 1px solid rgba(145,71,255,0.3); box-shadow: 0 0 10px rgba(145,71,255,0.2); display: none; }
+    .channel-thumb { width: 120px; height: 70px; border-radius: 8px; object-fit: cover; border: 1px solid rgba(145,71,255,0.4); box-shadow: 0 0 15px rgba(145,71,255,0.25); display: none; }
 
     /* İzleme aktif çizgisi */
     .working-bar {
