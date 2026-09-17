@@ -95,13 +95,15 @@ function updateLiveStats(statsData) {
 }
 
 function formatUptime(uptimeMs) {
-  if(!uptimeMs || uptimeMs <= 0) return '00:00:00';
-  const h = String(Math.floor(uptimeMs / 3600000)).padStart(2,'0');
-  const m = String(Math.floor((uptimeMs % 3600000) / 60000)).padStart(2,'0');
-  const s = String(Math.floor((uptimeMs % 60000) / 1000)).padStart(2,'0');
+  if(!uptimeMs || uptimeMs <= 0) return '0dk';
+  const totalMin = Math.floor(uptimeMs / 60000);
+  const d = Math.floor(totalMin / 1440);
+  const h = Math.floor((totalMin % 1440) / 60);
+  const m = totalMin % 60;
   
-  if (h === '00') return `${m}:${s}`;
-  return `${h}:${m}:${s}`;
+  if (d > 0) return `${d}g ${h}s ${m}dk`;
+  if (h > 0) return `${h}s ${m}dk`;
+  return `${m}dk`;
 }
 
 function renderUsers() {
