@@ -22,7 +22,7 @@ function connectWS() {
 
 async function fetchUsers() {
   try {
-    const res = await fetch('/api/admin/users', { headers: { 'x-admin-password': adminPass } });
+    const res = await fetch('/api/admin/users?t=' + Date.now(), { headers: { 'x-admin-password': adminPass } });
     if(res.status === 401) { alert("Şifre Yanlış!"); document.body.innerHTML = '<h1>Yetkisiz!</h1>'; return; }
     users = await res.json();
     renderUsers();
@@ -32,7 +32,7 @@ async function fetchUsers() {
 
 function fetchLicenses() {
   try {
-    fetch('/api/admin/licenses', { headers: { 'x-admin-password': adminPass } })
+    fetch('/api/admin/licenses?t=' + Date.now(), { headers: { 'x-admin-password': adminPass } })
       .then(res => res.json())
       .then(lics => {
         const catMap = {
