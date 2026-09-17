@@ -34,6 +34,16 @@
     .f12-guide code { display: block; background: #000; color: #0f0; padding: 12px; margin-top: 10px; border-radius: 6px; user-select: all; font-family: monospace; overflow-x: auto; white-space: nowrap; font-size: 0.85rem;}
     .instruction-img { width: 100%; border-radius: 8px; margin-top: 12px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
     
+    .btn-primary {
+      width: 100%; font-size: 1.1rem; padding: 16px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--purple), #00e5ff);
+      color: #fff; font-weight: 700; border: none; cursor: pointer;
+      transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(145,71,255,0.3);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(145,71,255,0.4); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; filter: grayscale(80%); transform: none; box-shadow: none; }
+
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     @media (max-width: 500px) { .two-col { grid-template-columns: 1fr; } }
   </style>
@@ -72,7 +82,7 @@
         <a href="#" onclick="alert('Şifrenizi sıfırlamak için lütfen İtemSatış mesajları veya Discord üzerinden yöneticinize ulaşın.')" style="color: var(--cyan); text-decoration: none;">Şifremi Unuttum?</a>
       </div>
 
-      <button id="btnLoginAction" class="btn" style="width:100%; font-size:1.1rem; padding:15px;">Giriş Yap</button>
+      <button id="btnLoginAction" class="btn-primary">Giriş Yap</button>
     </div>
 
     <!-- REGISTER -->
@@ -131,7 +141,7 @@
         </div>
       </div>
 
-      <button id="btnRegAction" class="btn" style="width:100%; font-size:1.1rem; padding:15px; background:var(--accent); color:#000; opacity:0.5; pointer-events:none; transition: 0.3s;">Tüm Bilgileri Doldurun</button>
+      <button id="btnRegAction" class="btn-primary" disabled>Tüm Bilgileri Doldurun</button>
     </div>
   </div>
 
@@ -213,12 +223,10 @@
     function updateRegButtonState() {
       const btn = $('btnRegAction');
       if (isPasswordValid && checkRegFormFilled()) {
-        btn.style.opacity = '1';
-        btn.style.pointerEvents = 'auto';
+        btn.disabled = false;
         btn.textContent = 'Kayıt Ol ve Botu Başlat';
       } else {
-        btn.style.opacity = '0.5';
-        btn.style.pointerEvents = 'none';
+        btn.disabled = true;
         btn.textContent = isPasswordValid ? 'Tüm Bilgileri Doldurun' : 'Şifreleri Doğrulayın';
       }
     }
