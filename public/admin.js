@@ -56,24 +56,25 @@ function fetchLicenses() {
            if (c.list.length === 0) continue;
            
            c.list.reverse(); // Yeniler üstte
+           const isUsed = key === 'used';
            
-           html += `<h4 class="category-title">${c.title} (${c.list.length} adet)</h4>`;
-           html += `<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px;">`;
+           // Textarea içerisine yazılacak metni hazırla
+           const textContent = c.list.map(l => {
+               if (isUsed) return `${l.code} (Kullanıldı: @${l.usedBy}) - ${l.durationDays || 30} Günlük`;
+               return l.code;
+           }).join('\n');
            
-           html += c.list.map(l => {
-              const bg = l.used ? 'rgba(255,50,50,0.1)' : 'rgba(0,255,128,0.1)';
-              const border = l.used ? 'rgba(255,50,50,0.3)' : 'rgba(0,255,128,0.3)';
-              const color = l.used ? '#ff5555' : '#00ff80';
-              return `
-              <div style="background:${bg}; border:1px solid ${border}; border-radius:8px; padding:12px; text-align:center;">
-                 <div style="font-family:monospace; font-size:1.1rem; color:${color}; font-weight:bold; letter-spacing:1px; margin-bottom:5px;">${l.code}</div>
-                 <div style="font-size:0.85rem; color:#ccc;">${l.durationDays || 30} Günlük</div>
-                 <div style="font-size:0.8rem; color:#888; margin-top:5px;">${l.used ? `(@${l.usedBy})` : 'Satışa Hazır'}</div>
+           html += `
+           <details style="margin-bottom: 15px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+              <summary style="padding: 15px; cursor: pointer; font-weight: 600; font-size: 1.1rem; color: #fff; outline: none; list-style-type: '📂 ';">
+                 ${c.title} (${c.list.length} adet)
+              </summary>
+              <div style="padding: 15px; border-top: 1px solid rgba(255,255,255,0.05);">
+                  <textarea readonly onclick="this.select();" style="width:100%; height:180px; background: rgba(0,0,0,0.5); color: ${isUsed ? '#ff5555' : '#00ff80'}; border: 1px dashed rgba(255,255,255,0.2); padding: 10px; font-family: monospace; font-size: 1.05rem; border-radius: 6px; resize: vertical; line-height:1.5;">${textContent}</textarea>
+                  <div style="font-size:0.85rem; color:#888; margin-top:5px; text-align:right;">* Kutucuğa tıklayarak tümünü seçebilirsiniz.</div>
               </div>
-              `;
-           }).join('');
-           
-           html += `</div>`;
+           </details>
+           `;
         }
         
         if (html === '') html = '<div style="color:#aaa;">Henüz hiç lisans üretilmemiş.</div>';
