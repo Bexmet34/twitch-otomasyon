@@ -3,175 +3,468 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Giriş Yap / Kayıt Ol</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <title>Twitch Drops – Giriş Yap / Kayıt Ol</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-    .auth-box { background: rgba(20,20,30,0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 40px; width: 100%; max-width: 450px; text-align: center; }
-    
-    .auth-tabs { display: flex; gap: 10px; margin-bottom: 30px; }
-    .auth-tabs button { flex: 1; padding: 12px; background: rgba(0,0,0,0.4); border: 1px solid transparent; color: #888; border-radius: 10px; cursor: pointer; font-weight: 600; transition: 0.3s; }
-    .auth-tabs button.active { background: rgba(0,255,128,0.1); border-color: var(--accent); color: var(--accent); }
+    body { display: flex; align-items: flex-start; justify-content: center; min-height: 100vh; padding: 30px 20px 60px; }
 
-    .auth-form { display: none; text-align: left; }
-    .auth-form.active { display: block; }
-    .auth-form label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #ccc; }
-    .auth-form input { width: 100%; padding: 12px; margin-bottom: 20px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-size: 1rem; }
-    .auth-form input:focus { border-color: var(--accent); outline: none; }
+    /* ── Genel Auth Kutusu ── */
+    .auth-wrapper { width: 100%; max-width: 520px; }
+
+    .auth-brand { text-align: center; margin-bottom: 28px; }
+    .auth-brand .brand-name { font-size: 1.8rem; font-weight: 800; }
+    .auth-brand .brand-sub { font-size: 0.85rem; }
+
+    /* ── Sekmeler ── */
+    .auth-tabs { display: flex; gap: 8px; margin-bottom: 28px; background: rgba(0,0,0,0.3); border-radius: 14px; padding: 5px; border: 1px solid rgba(255,255,255,0.06); }
+    .auth-tabs button {
+      flex: 1; padding: 11px; border: none; border-radius: 10px; cursor: pointer;
+      font-family: var(--font); font-size: 0.9rem; font-weight: 700;
+      background: transparent; color: var(--text-muted); transition: all 0.25s;
+    }
+    .auth-tabs button.active { background: rgba(145,71,255,0.25); color: #fff; border: 1px solid rgba(145,71,255,0.4); }
+
+    /* ── Form Paneller ── */
+    .auth-panel { display: none; }
+    .auth-panel.active { display: block; }
+
+    /* ── Input Group ── */
+    .field-group { margin-bottom: 18px; }
+    .field-label { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; color: #c4c4cc; margin-bottom: 7px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .field-label .req { color: #ff4545; }
+    .input-wrap { position: relative; }
+    .input-wrap input {
+      width: 100%; padding: 13px 16px; padding-right: 44px;
+      background: rgba(8,8,15,0.6); border: 1.5px solid rgba(255,255,255,0.1);
+      border-radius: 12px; color: #fff; font-size: 0.95rem; font-family: var(--font);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-sizing: border-box;
+    }
+    .input-wrap input:focus { outline: none; border-color: rgba(145,71,255,0.6); box-shadow: 0 0 0 3px rgba(145,71,255,0.12); }
+    .input-wrap input.valid   { border-color: rgba(0,230,118,0.5); }
+    .input-wrap input.invalid { border-color: rgba(255,69,69,0.5); }
     
-    .f12-guide { background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.85rem; color: #aaa; }
-    .f12-guide code { display: block; background: #000; color: #0f0; padding: 10px; margin-top: 10px; border-radius: 4px; user-select: all; font-family: monospace; overflow-x: auto; white-space: nowrap; }
+    /* Şifre göster/gizle düğmesi */
+    .eye-btn { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1.1rem; padding: 2px; transition: color 0.2s; }
+    .eye-btn:hover { color: var(--purple-lite); }
+
+    /* Validation mesajı */
+    .field-hint { font-size: 0.78rem; margin-top: 5px; min-height: 18px; display: flex; align-items: center; gap: 4px; }
+    .field-hint.ok  { color: #00e676; }
+    .field-hint.err { color: #ff4545; }
+    .field-hint.info{ color: var(--text-muted); }
+
+    /* Şifre güç göstergesi */
+    .pass-strength { display: flex; gap: 4px; margin-top: 6px; }
+    .pass-strength span { flex: 1; height: 3px; border-radius: 99px; background: rgba(255,255,255,0.1); transition: background 0.3s; }
+    .strength-weak   .pass-strength span:nth-child(-n+1) { background: #ff4545; }
+    .strength-medium .pass-strength span:nth-child(-n+2) { background: #ffaa00; }
+    .strength-strong .pass-strength span:nth-child(-n+3) { background: #00e676; }
+    .strength-very   .pass-strength span:nth-child(-n+4) { background: #00e676; }
+
+    /* ── CTA Butonu ── */
+    .btn-auth {
+      width: 100%; padding: 15px; border: none; border-radius: 14px; cursor: pointer;
+      font-family: var(--font); font-size: 1rem; font-weight: 800; letter-spacing: 0.04em;
+      background: linear-gradient(135deg, #9147ff, #6441a5); color: #fff;
+      box-shadow: 0 4px 20px rgba(145,71,255,0.35); transition: all 0.25s; margin-top: 8px;
+    }
+    .btn-auth:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(145,71,255,0.5); }
+    .btn-auth:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-auth.green { background: linear-gradient(135deg, #00b248, #00e676); color: #000; box-shadow: 0 4px 20px rgba(0,230,118,0.35); }
+    .btn-auth.green:hover { box-shadow: 0 8px 30px rgba(0,230,118,0.5); }
+
+    /* ── Auth Token Rehber ── */
+    .token-guide {
+      background: rgba(6,6,14,0.8); border: 1px solid rgba(145,71,255,0.25);
+      border-radius: 16px; padding: 20px; margin-bottom: 20px;
+    }
+    .token-guide-title { font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .token-guide-steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .step-item { display: flex; gap: 12px; align-items: flex-start; }
+    .step-num { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; background: rgba(145,71,255,0.3); border: 1px solid rgba(145,71,255,0.5); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 800; color: var(--purple-lite); }
+    .step-text { font-size: 0.83rem; color: #aaa; line-height: 1.55; }
+    .step-text b { color: #ddd; }
+
+    /* Rehber Görseli */
+    .guide-img { width: 100%; border-radius: 10px; border: 1px solid rgba(145,71,255,0.3); margin-bottom: 14px; display: block; }
+    
+    /* Kod kutusu */
+    .code-box {
+      background: #0d0d12; border: 1px solid rgba(0,229,255,0.2); border-radius: 10px;
+      padding: 12px 14px; display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    }
+    .code-text { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: #00e5ff; flex: 1; word-break: break-all; user-select: all; }
+    .copy-btn {
+      padding: 6px 12px; background: rgba(0,229,255,0.12); border: 1px solid rgba(0,229,255,0.3);
+      border-radius: 7px; color: #00e5ff; font-size: 0.75rem; font-weight: 700; cursor: pointer;
+      white-space: nowrap; transition: all 0.2s;
+    }
+    .copy-btn:hover { background: rgba(0,229,255,0.25); }
+
+    /* Dikkat kutusu */
+    .alert-box { display: flex; gap: 10px; padding: 12px 14px; border-radius: 10px; font-size: 0.82rem; margin-bottom: 4px; }
+    .alert-box.warn { background: rgba(255,170,0,0.08); border: 1px solid rgba(255,170,0,0.3); color: #ffcc55; }
+    .alert-box.warn b { color: #ffaa00; }
+
+    /* Divider */
+    .divider { text-align: center; color: var(--text-muted); font-size: 0.8rem; margin: 6px 0 18px; position: relative; }
+    .divider::before, .divider::after { content: ''; position: absolute; top: 50%; width: 40%; height: 1px; background: rgba(255,255,255,0.08); }
+    .divider::before { left: 0; } .divider::after { right: 0; }
+
+    /* Login alt link */
+    .switch-link { text-align: center; font-size: 0.83rem; color: var(--text-muted); margin-top: 16px; }
+    .switch-link a { color: var(--purple-lite); cursor: pointer; text-decoration: none; font-weight: 600; }
+    .switch-link a:hover { text-decoration: underline; }
+
+    /* Şifremi unuttum satırı */
+    .login-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 0.83rem; }
+    .login-meta label { display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted); }
+    .login-meta label input { width: auto; }
+    .forgot-link { color: var(--cyan); text-decoration: none; }
+    .forgot-link:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
   <div class="bg-orbs" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
 
-  <div class="auth-box glass">
-    <div class="brand" style="justify-content: center; margin-bottom: 30px;">
-      <div class="brand-text">
-        <span class="brand-name">Twitch Drops</span>
+  <div class="auth-wrapper">
+    
+    <!-- Marka -->
+    <div class="auth-brand">
+      <div class="brand">
+        <div class="brand-text">
+          <span class="brand-name">Twitch Drops</span>
+          <span class="brand-sub">Otonom Toplama Sistemi</span>
+        </div>
       </div>
     </div>
 
+    <!-- Sekmeler -->
     <div class="auth-tabs">
-      <button id="tabLogin" class="active">Giriş Yap</button>
-      <button id="tabRegister">Kayıt Ol (Yeni Lisans)</button>
+      <button id="tabLogin" class="active">🔑 Giriş Yap</button>
+      <button id="tabRegister">🚀 Kayıt Ol</button>
     </div>
 
-    <!-- LOGİN -->
-    <div id="formLogin" class="auth-form active">
-      <label>E-Posta Adresiniz</label>
-      <input type="email" id="logEmail" placeholder="ornek@mail.com" />
-      
-      <label>Şifreniz</label>
-      <input type="password" id="logPass" placeholder="••••••••" />
-      
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 0.9rem;">
-        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-muted); font-weight: normal; margin: 0;">
-          <input type="checkbox" id="logRemember" checked style="width: auto; margin: 0;" />
-          Beni Hatırla (30 Gün)
-        </label>
-        <a href="#" onclick="alert('Şifrenizi sıfırlamak için lütfen İtemSatış mesajları veya Discord üzerinden yöneticinize ulaşın.')" style="color: var(--cyan); text-decoration: none;">Şifremi Unuttum?</a>
-      </div>
+    <!-- ══════════ GİRİŞ PANELİ ══════════ -->
+    <div id="panelLogin" class="auth-panel active">
 
-      <button id="btnLoginAction" class="btn" style="width:100%; font-size:1.1rem; padding:15px;">Giriş Yap</button>
-    </div>
-
-    <!-- REGISTER -->
-    <div id="formRegister" class="auth-form">
-      
-      <label>E-Posta Adresiniz</label>
-      <input type="email" id="regEmail" placeholder="ornek@mail.com" />
-      
-      <label>Hesap Şifresi Belirleyin</label>
-      <input type="password" id="regPass" placeholder="Güçlü bir şifre seçin" />
-
-      <label>Şifrenizi Tekrar Girin</label>
-      <input type="password" id="regPass2" placeholder="Şifrenizi doğrulayın" />
-      
-      <label>İtemSatış Lisans Kodunuz (14 Hane)</label>
-      <input type="text" id="regLicense" placeholder="Örn: 1M-X94B2C3D4E5" />
-
-      <label>Twitch Auth-Token</label>
-      <input type="password" id="regToken" placeholder="Twitch gizli auth-token değeriniz" />
-      
-      <div class="f12-guide">
-        <b>Auth-Token Nasıl Alınır?</b><br/>
-        1. <b>twitch.tv</b>'ye gidin ve hesabınıza giriş yapın.<br/>
-        2. Klavyeden <b>F12</b> tuşuna basıp geliştirici seçeneklerini açın.<br/>
-        3. Üstten <b>Console</b> (Konsol) sekmesine tıklayın.<br/>
-        4. Aşağıdaki kodu kopyalayıp Console'a yapıştırın ve Enter'a basın:<br/>
-        <code>document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1]</code>
-        
-        <div style="margin-top:10px; padding:10px; background:rgba(255,69,69,0.1); border-left: 3px solid #ff4545; border-radius:4px; font-size:0.85rem; color:#ffbaba;">
-          <b>⚠️ DİKKAT:</b> Tarayıcınız güvenliğiniz için yapıştırmaya izin vermeyebilir. Eğer Console'da kırmızı bir uyarı görürseniz, önce Console'a <b>allow pasting</b> yazıp Enter'a basın, ardından yukarıdaki token kodunu tekrar yapıştırın.
+      <div class="field-group">
+        <div class="field-label">📧 E-Posta Adresi <span class="req">*</span></div>
+        <div class="input-wrap">
+          <input type="email" id="logEmail" placeholder="ornek@mail.com" autocomplete="email" />
         </div>
       </div>
 
-      <button id="btnRegAction" class="btn" style="width:100%; font-size:1.1rem; padding:15px; background:var(--accent); color:#000;">Kayıt Ol ve Botu Başlat</button>
+      <div class="field-group">
+        <div class="field-label">🔒 Şifre <span class="req">*</span></div>
+        <div class="input-wrap">
+          <input type="password" id="logPass" placeholder="••••••••" autocomplete="current-password" />
+          <button class="eye-btn" type="button" onclick="toggleEye('logPass', this)">👁</button>
+        </div>
+      </div>
+
+      <div class="login-meta">
+        <label>
+          <input type="checkbox" id="logRemember" checked />
+          Beni Hatırla (30 Gün)
+        </label>
+        <a href="#" class="forgot-link" onclick="forgotPassword()">Şifremi Unuttum?</a>
+      </div>
+
+      <button id="btnLoginAction" class="btn-auth">Giriş Yap →</button>
+
+      <div class="switch-link">Hesabın yok mu? <a onclick="switchTab('register')">Kayıt Ol</a></div>
     </div>
+
+    <!-- ══════════ KAYIT PANELİ ══════════ -->
+    <div id="panelRegister" class="auth-panel">
+
+      <!-- E-Posta -->
+      <div class="field-group">
+        <div class="field-label">📧 E-Posta Adresi <span class="req">*</span></div>
+        <div class="input-wrap">
+          <input type="email" id="regEmail" placeholder="ornek@mail.com" autocomplete="email"
+            oninput="validateEmail(this)" />
+        </div>
+        <div class="field-hint info" id="hintEmail">Giriş yaparken kullanacağınız adres.</div>
+      </div>
+
+      <!-- Şifre -->
+      <div class="field-group">
+        <div class="field-label">🔒 Şifre Belirleyin <span class="req">*</span></div>
+        <div class="input-wrap">
+          <input type="password" id="regPass" placeholder="En az 8 karakter" autocomplete="new-password"
+            oninput="checkStrength(this)" />
+          <button class="eye-btn" type="button" onclick="toggleEye('regPass', this)">👁</button>
+        </div>
+        <div class="pass-strength" id="strengthBar"><span></span><span></span><span></span><span></span></div>
+        <div class="field-hint info" id="hintPass">Güçlü bir şifre için harf, rakam ve özel karakter kullanın.</div>
+      </div>
+
+      <!-- Şifre Tekrar -->
+      <div class="field-group">
+        <div class="field-label">🔒 Şifreyi Tekrar Girin <span class="req">*</span></div>
+        <div class="input-wrap">
+          <input type="password" id="regPass2" placeholder="Şifrenizi tekrar girin" autocomplete="new-password"
+            oninput="checkPassMatch(this)" />
+          <button class="eye-btn" type="button" onclick="toggleEye('regPass2', this)">👁</button>
+        </div>
+        <div class="field-hint" id="hintPass2"></div>
+      </div>
+
+      <!-- Lisans Kodu -->
+      <div class="field-group">
+        <div class="field-label">🎫 Lisans Kodu <span class="req">*</span></div>
+        <div class="input-wrap">
+          <input type="text" id="regLicense" placeholder="Örn: 1M-X94B2C3D4E5" maxlength="16"
+            oninput="formatLicense(this)" style="font-family:'JetBrains Mono',monospace; letter-spacing:0.1em;" />
+        </div>
+        <div class="field-hint info" id="hintLicense">İtemSatış üzerinden aldığınız 14 haneli kod.</div>
+      </div>
+
+      <!-- Auth Token -->
+      <div class="field-group">
+        <div class="field-label">🔑 Twitch Auth-Token <span class="req">*</span></div>
+        <div class="input-wrap">
+          <input type="password" id="regToken" placeholder="Twitch hesabınızın gizli token'ı"
+            oninput="validateToken(this)" />
+          <button class="eye-btn" type="button" onclick="toggleEye('regToken', this)">👁</button>
+        </div>
+        <div class="field-hint info" id="hintToken">Aşağıdaki rehberi takip ederek token'ınızı alın.</div>
+      </div>
+
+      <!-- Auth Token Rehberi -->
+      <div class="token-guide">
+        <div class="token-guide-title">📖 Auth-Token Nasıl Alınır?</div>
+        
+        <img src="auth_guide.jpg" alt="F12 Console Rehber" class="guide-img" />
+
+        <div class="token-guide-steps">
+          <div class="step-item">
+            <div class="step-num">1</div>
+            <div class="step-text"><b>twitch.tv</b>'ye gidin ve hesabınıza giriş yapın.</div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">2</div>
+            <div class="step-text">Klavyeden <b>F12</b> tuşuna basın. Sağda geliştirici paneli açılır.</div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">3</div>
+            <div class="step-text">Üstteki sekmelerden <b>Console</b>'a tıklayın.</div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">4</div>
+            <div class="step-text">Aşağıdaki kodu kopyalayıp Console'a yapıştırın ve <b>Enter</b>'a basın:</div>
+          </div>
+        </div>
+
+        <div class="code-box">
+          <span class="code-text" id="tokenCode">document.cookie.split('; ').find(row => row.startsWith('auth-token='))?.split('=')[1]</span>
+          <button class="copy-btn" onclick="copyCode()">Kopyala</button>
+        </div>
+
+        <div class="alert-box warn">
+          <span>⚠️</span>
+          <div><b>Yapıştırma Engeli Varsa:</b> Console'a önce <code style="background:rgba(0,0,0,0.4);padding:1px 5px;border-radius:3px;font-size:0.8rem;">allow pasting</code> yazıp Enter'a basın, ardından kodu tekrar yapıştırın.</div>
+        </div>
+      </div>
+
+      <button id="btnRegAction" class="btn-auth green">🚀 Kayıt Ol ve Botu Başlat</button>
+
+      <div class="switch-link" style="margin-top:14px;">Zaten hesabın var mı? <a onclick="switchTab('login')">Giriş Yap</a></div>
+    </div>
+
   </div>
 
   <script>
+    // ── Oturum kontrolü
     const savedUser = localStorage.getItem('login') || sessionStorage.getItem('login');
-    if(savedUser) window.location.href = 'dashboard.html';
+    if (savedUser) window.location.href = 'dashboard.html';
 
     const $ = id => document.getElementById(id);
 
-    // Tarayıcının çirkin alert'ini Twitch temalı modern mesaja çevir
-    window.alert = (msg) => {
+    // ── SweetAlert override
+    window.alert = (msg, type) => {
       Swal.fire({
-        background: '#18181b',
-        color: '#efeff1',
-        confirmButtonColor: '#9147ff',
-        text: msg,
-        icon: (msg.toLowerCase().includes('hata') || msg.toLowerCase().includes('boş')) ? 'error' : 'success'
+        background: '#18181b', color: '#efeff1', confirmButtonColor: '#9147ff',
+        text: msg, icon: type || (msg.toLowerCase().includes('hata') || msg.toLowerCase().includes('boş') || msg.toLowerCase().includes('lütfen') ? 'error' : 'success'),
+        toast: true, position: 'top-end', showConfirmButton: false, timer: 4500
       });
     };
 
-    $('tabLogin').onclick = () => {
-      $('tabLogin').className = 'active'; $('tabRegister').className = '';
-      $('formLogin').className = 'auth-form active'; $('formRegister').className = 'auth-form';
-    };
-    $('tabRegister').onclick = () => {
-      $('tabRegister').className = 'active'; $('tabLogin').className = '';
-      $('formRegister').className = 'auth-form active'; $('formLogin').className = 'auth-form';
-    };
+    // ── Tab Switch
+    function switchTab(tab) {
+      if (tab === 'login') {
+        $('tabLogin').classList.add('active'); $('tabRegister').classList.remove('active');
+        $('panelLogin').classList.add('active'); $('panelRegister').classList.remove('active');
+      } else {
+        $('tabRegister').classList.add('active'); $('tabLogin').classList.remove('active');
+        $('panelRegister').classList.add('active'); $('panelLogin').classList.remove('active');
+      }
+    }
+    $('tabLogin').onclick    = () => switchTab('login');
+    $('tabRegister').onclick = () => switchTab('register');
 
-    $('btnLoginAction').onclick = async () => {
-      const email = $('logEmail').value.trim();
-      const password = $('logPass').value;
-      if(!email || !password) return alert("Boş alan bırakmayın.");
+    // ── Şifre Göster/Gizle
+    function toggleEye(inputId, btn) {
+      const inp = $(inputId);
+      if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+      else { inp.type = 'password'; btn.textContent = '👁'; }
+    }
+
+    // ── E-Posta Doğrulama
+    function validateEmail(inp) {
+      const hint = $('hintEmail');
+      const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inp.value.trim());
+      inp.classList.toggle('valid', ok); inp.classList.toggle('invalid', !ok && inp.value.length > 0);
+      hint.className = ok ? 'field-hint ok' : 'field-hint err';
+      hint.textContent = ok ? '✔ Geçerli e-posta adresi.' : (inp.value.length > 0 ? '✖ Geçersiz e-posta formatı.' : 'Giriş yaparken kullanacağınız adres.');
+    }
+
+    // ── Şifre Güç Kontrolü
+    function checkStrength(inp) {
+      const v = inp.value;
+      const bar = $('strengthBar').closest('.field-group');
+      let score = 0;
+      if (v.length >= 8) score++;
+      if (/[A-Z]/.test(v)) score++;
+      if (/[0-9]/.test(v)) score++;
+      if (/[^A-Za-z0-9]/.test(v)) score++;
       
-      $('btnLoginAction').textContent = 'Bekleyin...';
+      const hint = $('hintPass');
+      const labels = ['', 'Zayıf', 'Orta', 'Güçlü', 'Çok Güçlü'];
+      const cls = ['', 'strength-weak', 'strength-medium', 'strength-strong', 'strength-very'];
+      const colors = ['', '#ff4545', '#ffaa00', '#00e676', '#00e676'];
+
+      const sb = $('strengthBar').parentElement;
+      sb.className = sb.className.replace(/strength-\w+/g, '') + (score ? ' ' + cls[score] : '');
+      
+      hint.className = 'field-hint ' + (score >= 3 ? 'ok' : score >= 1 ? 'err' : 'info');
+      hint.textContent = v.length === 0 ? 'En az 8 karakter kullanın.' : (score >= 3 ? `✔ ${labels[score]}` : `✖ ${labels[score] || 'Çok Zayıf'} — Büyük harf, rakam ve özel karakter ekleyin.`);
+      
+      checkPassMatch($('regPass2'));
+    }
+
+    // ── Şifre Eşleşme Kontrolü
+    function checkPassMatch(inp) {
+      const hint = $('hintPass2');
+      if (!inp.value) { hint.textContent = ''; inp.classList.remove('valid','invalid'); return; }
+      const match = inp.value === $('regPass').value;
+      inp.classList.toggle('valid', match); inp.classList.toggle('invalid', !match);
+      hint.className = 'field-hint ' + (match ? 'ok' : 'err');
+      hint.textContent = match ? '✔ Şifreler eşleşiyor.' : '✖ Şifreler eşleşmiyor!';
+    }
+
+    // ── Lisans Kodu Formatla
+    function formatLicense(inp) {
+      const hint = $('hintLicense');
+      const raw = inp.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+      inp.value = raw;
+      const valid = raw.length >= 10;
+      inp.classList.toggle('valid', valid); inp.classList.toggle('invalid', !valid && raw.length > 0);
+      hint.className = 'field-hint ' + (valid ? 'ok' : 'info');
+      hint.textContent = valid ? '✔ Lisans kodu formatı geçerli görünüyor.' : 'İtemSatış üzerinden aldığınız 14 haneli kod.';
+    }
+
+    // ── Token Doğrulama
+    function validateToken(inp) {
+      const hint = $('hintToken');
+      const valid = inp.value.trim().length > 20;
+      inp.classList.toggle('valid', valid); inp.classList.toggle('invalid', !valid && inp.value.length > 0);
+      hint.className = 'field-hint ' + (valid ? 'ok' : 'info');
+      hint.textContent = valid ? '✔ Token alındı.' : 'Aşağıdaki rehberi takip ederek token\'ınızı alın.';
+    }
+
+    // ── Kod Kopyala
+    function copyCode() {
+      const code = $('tokenCode').textContent;
+      navigator.clipboard.writeText(code).then(() => {
+        Swal.fire({ background:'#18181b', color:'#efeff1', icon:'success', text:'Kod kopyalandı! Console\'a yapıştırın.', toast:true, position:'top-end', showConfirmButton:false, timer:2500 });
+      });
+    }
+
+    // ── Şifremi Unuttum
+    function forgotPassword() {
+      Swal.fire({
+        background: '#18181b', color: '#efeff1', confirmButtonColor: '#9147ff',
+        icon: 'info', title: 'Şifre Sıfırlama',
+        text: 'Şifrenizi sıfırlamak için İtemSatış mesajları veya Discord üzerinden yöneticinize ulaşın.',
+        confirmButtonText: 'Tamam'
+      });
+    }
+
+    // ── Giriş Yap
+    $('btnLoginAction').onclick = async () => {
+      const email    = $('logEmail').value.trim();
+      const password = $('logPass').value;
+      if (!email || !password) return alert('Lütfen e-posta ve şifrenizi girin.', 'error');
+      
+      const btn = $('btnLoginAction');
+      btn.disabled = true; btn.textContent = 'Bağlanılıyor...';
       try {
         const r = await fetch('/api/login', {
-          method: 'POST', headers:{'Content-Type':'application/json'},
+          method: 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ email, password })
         });
         const d = await r.json();
-        if(d.ok) {
-          if ($('logRemember').checked) {
-             localStorage.setItem('login', d.login);
-          } else {
-             sessionStorage.setItem('login', d.login);
-          }
-          window.location.href = 'dashboard.html';
+        if (d.ok) {
+          if ($('logRemember').checked) localStorage.setItem('login', d.login);
+          else sessionStorage.setItem('login', d.login);
+          Swal.fire({ background:'#18181b', color:'#efeff1', icon:'success', title:'Hoş Geldin!', text:'Paneline yönlendiriliyorsun...', showConfirmButton:false, timer:1500 });
+          setTimeout(() => window.location.href = 'dashboard.html', 1500);
         } else {
-          alert(d.error);
+          alert('Hata: ' + d.error, 'error');
         }
-      } catch(e) { alert("Sunucu hatası."); }
-      $('btnLoginAction').textContent = 'Giriş Yap';
+      } catch(e) { alert('Sunucu hatası. Lütfen tekrar deneyin.', 'error'); }
+      btn.disabled = false; btn.textContent = 'Giriş Yap →';
     };
 
+    // ── Kayıt Ol
     $('btnRegAction').onclick = async () => {
-      const email = $('regEmail').value.trim();
+      const email    = $('regEmail').value.trim();
       const password = $('regPass').value;
-      const pass2 = $('regPass2').value;
-      const licenseCode = $('regLicense').value.trim();
-      const token = $('regToken').value.trim();
-      
-      if(!email || !password || !pass2 || !licenseCode || !token) return alert("Boş alan bırakmayın.");
-      if(password !== pass2) return alert("Şifreler uyuşmuyor! Lütfen iki şifreyi de aynı girin.");
-      
-      $('btnRegAction').textContent = 'Hesap Kuruluyor...';
+      const pass2    = $('regPass2').value;
+      const license  = $('regLicense').value.trim();
+      const token    = $('regToken').value.trim();
+
+      if (!email || !password || !pass2 || !license || !token)
+        return alert('Lütfen tüm alanları doldurun.', 'error');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        return alert('Geçerli bir e-posta adresi girin.', 'error');
+      if (password.length < 8)
+        return alert('Şifreniz en az 8 karakter olmalı.', 'error');
+      if (password !== pass2)
+        return alert('Şifreler eşleşmiyor! Lütfen tekrar kontrol edin.', 'error');
+      if (license.length < 10)
+        return alert('Geçersiz lisans kodu formatı.', 'error');
+      if (token.length < 20)
+        return alert('Geçersiz Twitch auth-token. Lütfen rehberi takip edin.', 'error');
+
+      const btn = $('btnRegAction');
+      btn.disabled = true; btn.textContent = '⏳ Hesap Kuruluyor...';
       try {
         const r = await fetch('/api/register', {
-          method: 'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email, password, licenseCode, token })
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ email, password, licenseCode: license, token })
         });
         const d = await r.json();
-        if(d.ok) {
-          alert("Hesabınız başarıyla kuruldu ve botunuz başladı! Panele yönlendiriliyorsunuz.");
+        if (d.ok) {
           localStorage.setItem('login', d.login);
-          window.location.href = 'dashboard.html';
+          Swal.fire({
+            background: '#18181b', color: '#efeff1', confirmButtonColor: '#9147ff',
+            icon: 'success', title: '🎉 Hoş Geldin!',
+            text: 'Hesabın oluşturuldu ve botun başlatıldı! Paneline yönlendiriliyorsun.',
+            showConfirmButton: false, timer: 2500
+          });
+          setTimeout(() => window.location.href = 'dashboard.html', 2500);
         } else {
-          alert("Hata: " + d.error);
+          alert('Hata: ' + d.error, 'error');
         }
-      } catch(e) { alert("Sunucu hatası."); }
-      $('btnRegAction').textContent = 'Kayıt Ol ve Botu Başlat';
+      } catch(e) { alert('Sunucu hatası. Lütfen tekrar deneyin.', 'error'); }
+      btn.disabled = false; btn.textContent = '🚀 Kayıt Ol ve Botu Başlat';
     };
   </script>
 </body>
