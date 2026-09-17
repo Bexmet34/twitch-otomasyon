@@ -1,6 +1,11 @@
 const $ = id => document.getElementById(id);
 const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
+let checkInterval = null;
+let currentLogin = null;
+let ws = null;
+let isFirstLoad = true;
+
 const loginSession = localStorage.getItem('login');
 if (!loginSession) {
   window.location.href = 'login.html';
@@ -15,10 +20,7 @@ $('btnLogout').addEventListener('click', () => {
   window.location.href = 'index.html';
 });
 
-// Takip Sistemi
-let checkInterval = null;
-let currentLogin = null;
-let ws = null;
+// Takip Sistemi (Değişkenler üste taşındı)
 
 function formatUptime(startedAt) {
   if(!startedAt) return '—';
@@ -50,8 +52,7 @@ async function fetchStats(login) {
   }
 }
 
-let isFirstLoad = true;
-
+// isFirstLoad üste taşındı
 function renderStats(u) {
   // İlk açılışta loader'ı gizleme mantığı
   if (isFirstLoad) {
