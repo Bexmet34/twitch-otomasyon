@@ -110,15 +110,7 @@ function renderStats(u) {
   $('uiClaimed').textContent = s.claimedCount || 0;
   
   if (s.dropName) {
-    $('uiPulse').style.display = 'inline-block';
-    $('uiCurrentDropName').textContent = s.dropName;
-    $('uiCurrentDropPercent').textContent = `%${s.dropProgress || 0}`;
-    $('uiCurrentDropFill').style.width = `${s.dropProgress || 0}%`;
-  } else {
-    $('uiPulse').style.display = 'none';
-    $('uiCurrentDropName').textContent = 'Aranıyor...';
-    $('uiCurrentDropPercent').textContent = '%0';
-    $('uiCurrentDropFill').style.width = '0%';
+    // Pulse artık envanter kartlarında gösteriliyor, ayrı bar yok
   }
   
   $('uiUptime').textContent = formatTimeLeft(u.expiresAt);
@@ -160,7 +152,12 @@ async function renewLicense() {
 function renderInventory(invList, currentName, currentProg) {
   const grid = $('uiInventory');
   if (!invList || invList.length === 0) {
-    grid.innerHTML = '<div style="color:var(--text-muted); font-size: 0.9rem;">Henüz bir drop bilgisi çekilemedi.</div>';
+    grid.innerHTML = `
+      <div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text-muted); font-size:0.95rem;">
+        <div style="font-size:2.5rem; margin-bottom:12px;">📦</div>
+        Henüz bir drop bilgisi çekilemedi.<br/>
+        <span style="font-size:0.82rem;">Bot çalışmaya başlayınca droplar burada görünecek.</span>
+      </div>`;
     return;
   }
 
@@ -170,15 +167,35 @@ function renderInventory(invList, currentName, currentProg) {
     if (currentName && item.name === currentName) {
        p = currentProg || p;
     }
-    const isClaimed = p >= 100 || item.name.includes('(Alındı)');
-    
+    const isCompleted = p >= 100 || item.name.includes('(Alındı)');
+    const isExpired   = item.name.includes('(Süresi Bitti)');
+    const isActive    = !isCompleted && !isExpired && currentName && item.name === currentName;
+
+    const cardClass = isCompleted ? 'drop-card completed' : isExpired ? 'drop-card expired' : 'drop-card';
+    const fillClass = isCompleted ? 'drop-progress-fill done' : 'drop-progress-fill';
+    const pctLabel  = isCompleted ? '<span class="drop-pct-label done">✔ Tamamlandı</span>' : `<span class="drop-pct-label">%${p}</span>`;
+
+    const activeBadge  = isActive    ? '<span class="drop-active-badge">● AKTİF</span>'  : '';
+    const expiredBadge = isExpired   ? '<span class="drop-expired-badge">× Bitti</span>'  : '';
+    const doneBadge    = isCompleted ? '' : '';
+    const pctBadge     = !isCompleted ? `<span class="drop-pct-badge">%${p}</span>` : '';
+
+    const imgSrc = item.image || 'https://static-cdn.jtvnw.net/drops/fallback.png';
+    const displayName = esc(item.name.replace(' (Alındı)', '').replace(' (Süresi Bitti)', ''));
+    const suffix = isCompleted ? ' ✔' : isExpired ? ' (Sona Erdi)' : '';
+
     return `
-      <div class="drop-item">
-        <img src="${item.image || 'https://static-cdn.jtvnw.net/drops/fallback.png'}" />
-        <div class="drop-title" title="${esc(item.name)}">${esc(item.name)}</div>
-        <div>
-          <div class="drop-progress"><div class="drop-progress-fill" style="width:${isClaimed ? 100 : p}%"></div></div>
-          <div style="font-size: 0.8rem; text-align:right; margin-top:5px; color:${isClaimed ? '#00ff80' : '#aaa'}">${isClaimed ? 'Tamamlandı' : `%${p}`}</div>
+      <div class="${cardClass}">
+        <div class="drop-img-wrap">
+          <img class="drop-img" src="${imgSrc}" alt="${displayName}" loading="lazy" />
+          ${activeBadge}${expiredBadge}${pctBadge}
+        </div>
+        <div class="drop-body">
+          <div class="drop-name">${displayName}${suffix}</div>
+          <div class="drop-progress-track">
+            <div class="${fillClass}" style="width:${Math.min(p,100)}%"></div>
+          </div>
+          ${pctLabel}
         </div>
       </div>
     `;
