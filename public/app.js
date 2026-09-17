@@ -50,7 +50,19 @@ async function fetchStats(login) {
   }
 }
 
+let isFirstLoad = true;
+
 function renderStats(u) {
+  // İlk açılışta loader'ı gizleme mantığı
+  if (isFirstLoad) {
+     if (u.isRunning && (!u.stats || !u.stats.currentChannel)) {
+        $('sysLoader').querySelector('.loader-subtitle span').textContent = 'Twitch taranıyor, aktif yayın aranıyor...';
+     } else {
+        $('sysLoader').classList.add('hidden');
+        isFirstLoad = false;
+     }
+  }
+
   $('fullDashboard').style.display = 'block';
   
   $('uiAvatar').src = esc(u.profile_image_url) || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23333%22/></svg>';
@@ -66,14 +78,24 @@ function renderStats(u) {
   }
 
   const s = u.stats || {};
-  $('uiChannel').textContent = s.currentChannel ? esc(s.currentChannel) : 'Aranıyor...';
+  
+  if (s.currentChannel) {
+     $('uiChannel').textContent = esc(s.currentChannel);
+     $('uiWorkBar').style.display = 'block';
+  } else {
+     $('uiChannel').textContent = 'Aranıyor...';
+     $('uiWorkBar').style.display = 'none';
+  }
+  
   $('uiClaimed').textContent = s.claimedCount || 0;
   
   if (s.dropName) {
+    $('uiPulse').style.display = 'inline-block';
     $('uiCurrentDropName').textContent = s.dropName;
     $('uiCurrentDropPercent').textContent = `%${s.dropProgress || 0}`;
     $('uiCurrentDropFill').style.width = `${s.dropProgress || 0}%`;
   } else {
+    $('uiPulse').style.display = 'none';
     $('uiCurrentDropName').textContent = 'Aranıyor...';
     $('uiCurrentDropPercent').textContent = '%0';
     $('uiCurrentDropFill').style.width = '0%';

@@ -54,9 +54,50 @@
     /* Kayıt Ekranı */
     .setup-box { background: rgba(255,255,255,0.02); padding: 20px; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.2); }
     .setup-code { width: 100%; height: 140px; background: #000; color: #0f0; padding: 15px; font-family: 'JetBrains Mono', monospace; border-radius: 8px; border: 1px solid #333; margin: 15px 0; resize: none; }
+
+    /* SaaS Özel Tasarım Eklemeleri */
+    .saas-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    
+    /* YENİ: Premium Yükleme Ekranı (Loader) */
+    .premium-loader {
+       position: fixed; inset: 0; background: rgba(10, 10, 15, 0.95);
+       z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;
+       backdrop-filter: blur(20px); transition: opacity 0.6s ease, visibility 0.6s ease;
+    }
+    .premium-loader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .loader-spinner {
+       width: 60px; height: 60px; border: 4px solid rgba(145,71,255,0.1);
+       border-top-color: var(--purple-lite); border-radius: 50%;
+       animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+       margin-bottom: 20px;
+       box-shadow: 0 0 30px rgba(145,71,255,0.4);
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 10px; letter-spacing: 1px; }
+    .loader-subtitle { font-size: 0.95rem; color: var(--text-muted); display:flex; align-items:center; gap:8px; }
+    .loader-pulse { width:10px; height:10px; background:var(--cyan); border-radius:50%; animation: pulse 1s infinite alternate; box-shadow: 0 0 10px var(--cyan); }
+    
+    /* Animasyonlu Aktiflik Bildirgesi */
+    .live-pulse { animation: livePulse 2s infinite; }
+    @keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(0, 230, 118, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); } }
+    
+    .working-bar {
+       background: linear-gradient(90deg, transparent, rgba(145,71,255,0.4), transparent);
+       background-size: 200% 100%;
+       animation: loadingBar 2s infinite linear;
+    }
+    @keyframes loadingBar { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
   </style>
 </head>
 <body>
+  
+  <!-- PREMIUM LOADER -->
+  <div class="premium-loader" id="sysLoader">
+     <div class="loader-spinner"></div>
+     <div class="loader-title">Sisteme Bağlanılıyor</div>
+     <div class="loader-subtitle"><div class="loader-pulse"></div><span>Canlı yayınlar taranıyor, lütfen bekleyin...</span></div>
+  </div>
+
   <div class="bg-orbs" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
 
   <div class="container">
@@ -87,13 +128,14 @@
         </div>
 
         <div class="stats-grid">
-          <div class="stat-box">
+          <div class="stat-box" style="position:relative; overflow:hidden;">
+            <div class="working-bar" style="position:absolute; top:0; left:0; width:100%; height:3px;" id="uiWorkBar"></div>
             <div style="color:var(--text-muted); font-size:0.9rem;">İzlenen Kanal</div>
-            <div class="val" id="uiChannel">—</div>
+            <div class="val" id="uiChannel" style="color:var(--cyan); text-shadow: 0 0 8px rgba(0,229,255,0.3);">—</div>
           </div>
           <div class="stat-box">
             <div style="color:var(--text-muted); font-size:0.9rem;">Alınan Kutu</div>
-            <div class="val" id="uiClaimed">0</div>
+            <div class="val" id="uiClaimed" style="color:var(--yellow); text-shadow: 0 0 8px rgba(255,214,0,0.3);">0</div>
           </div>
           <div class="stat-box">
             <div style="color:var(--text-muted); font-size:0.9rem;">Aktif Süre</div>
@@ -101,13 +143,16 @@
           </div>
         </div>
 
-        <div style="margin-bottom: 25px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-          <div style="display:flex; justify-content:space-between; font-size: 0.95rem; margin-bottom: 8px;">
-             <span style="color:#ddd;">Güncel Hedef: <b id="uiCurrentDropName">Aranıyor...</b></span>
-             <b id="uiCurrentDropPercent" style="color:var(--accent);">%0</b>
+        <div style="margin-bottom: 25px; padding: 18px; background: rgba(0,0,0,0.4); border-radius: 12px; border: 1px solid rgba(145,71,255,0.3); position:relative; overflow:hidden; box-shadow: inset 0 0 20px rgba(145,71,255,0.05);">
+          <div style="display:flex; justify-content:space-between; font-size: 1rem; margin-bottom: 12px;">
+             <span style="color:#ddd; display:flex; align-items:center; gap:8px;">
+                <span id="uiPulse" style="width:8px; height:8px; border-radius:50%; background:var(--green); display:none;" class="live-pulse"></span>
+                <span>Güncel Hedef: <b id="uiCurrentDropName">Aranıyor...</b></span>
+             </span>
+             <b id="uiCurrentDropPercent" style="color:#fff; text-shadow: 0 0 10px var(--purple-lite); font-size:1.1rem;">%0</b>
           </div>
-          <div class="drop-progress" style="height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden;">
-             <div id="uiCurrentDropFill" style="height: 100%; background: var(--accent); width: 0%; transition: width 0.5s ease;"></div>
+          <div class="drop-progress" style="height: 12px; background: rgba(255,255,255,0.1); border-radius: 6px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);">
+             <div id="uiCurrentDropFill" style="height: 100%; background: linear-gradient(90deg, var(--purple), var(--cyan)); width: 0%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px var(--cyan);"></div>
           </div>
         </div>
 
