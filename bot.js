@@ -343,6 +343,10 @@ export class TwitchDropsBot {
                   }
               }
           }
+          if (container && (container.textContent.includes('Bu kampanya kapanmış') || container.textContent.includes('ended'))) {
+              name = name + ' (Süresi Bitti)';
+          }
+
           if(!results.find(r => r.name === name && r.image === image)) {
              results.push({ name, progress, image });
           }
