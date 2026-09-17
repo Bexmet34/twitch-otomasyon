@@ -21,6 +21,7 @@ $('btnLogout').addEventListener('click', () => {
 });
 
 // Takip Sistemi (Değişkenler üste taşındı)
+let currentUserData = {};
 
 function formatTimeLeft(expiresAt) {
   if(!expiresAt) return 'Süresiz';
@@ -46,7 +47,8 @@ async function fetchStats(login) {
       return;
     }
     const data = await res.json();
-    renderStats(data);
+    currentUserData = { ...currentUserData, ...data };
+    renderStats(currentUserData);
     
     // WS Bağlantısını başlat/güncelle
     if (currentLogin !== login) {
@@ -165,7 +167,10 @@ function connectWS(login) {
   ws.addEventListener('message', evt => {
     try {
       const d = JSON.parse(evt.data);
-      if (d.type === 'my_stat') renderStats({ ...d.data, login: currentLogin });
+      if (d.type === 'my_stat') {
+         currentUserData = { ...currentUserData, isRunning: d.data.isRunning, stats: d.data.stats, login: currentLogin };
+         renderStats(currentUserData);
+      }
     } catch (_) {}
   });
 
