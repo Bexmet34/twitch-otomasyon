@@ -5,11 +5,13 @@
 
 import puppeteer from 'puppeteer';
 
-const DROPS_TAG              = 'c2542d6d-cd10-4532-919b-3d19f30a768b';
-const GAME_SLUG              = 'albion-online';
-const CLAIM_CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 dakika
-const STREAM_CHECK_INTERVAL_MS =  15 * 60 * 1000; // 15 dakika
-const RECONNECT_DELAY_MS       =   2 * 60 * 1000; // 2 dakika
+const DROPS_TAG               = 'c2542d6d-cd10-4532-919b-3d19f30a768b';
+const GAME_SLUG               = 'albion-online';
+const CLAIM_CHECK_INTERVAL_MS =  5 * 60 * 1000; // 5 dakika (Envanter & Drop kontrolü)
+const STREAM_CHECK_INTERVAL_MS =  5 * 60 * 1000; // 5 dakika (Yayıncı sağlık kontrolü)
+const NO_STREAM_WAIT_MS        = 15 * 60 * 1000; // 15 dakika (Yayın bulunamadığında bekleme)
+const SLEEP_DURATION_MS        =  1 * 60 * 60 * 1000; // 1 saat (Uyku modu)
+const RECONNECT_DELAY_MS       =  2 * 60 * 1000; // 2 dakika (Hata durumunda bekleme)
 
 // Tüm botların paylaşacağı tek Chrome uygulaması
 let sharedBrowser = null;
@@ -102,16 +104,16 @@ export class TwitchDropsBot {
         await this._setup();
         const isActive = await this._isCampaignActive();
         if (!isActive) {
-          this.log('warn', '⚠️ Aktif Albion Online Drop Kampanyası bulunamadı. 4 saat uyku moduna geçiliyor...');
-          this.sleepingUntil = Date.now() + (4 * 60 * 60 * 1000);
+          this.log('warn', '⚠️ Aktif Albion Online Drop Kampanyası bulunamadı. 1 saat uyku moduna geçiliyor...');
+          this.sleepingUntil = Date.now() + SLEEP_DURATION_MS;
           await this._cleanup();
           continue;
         }
 
         const channel = await this._findDropChannel();
         if (!channel) {
-          this.log('warn', '⚠️  Aktif Drops etkin yayın bulunamadı. 5 dk sonra tekrar deneniyor…');
-          await this._sleep(STREAM_CHECK_INTERVAL_MS);
+          this.log('warn', '⚠️  Aktif Drops etkin yayın bulunamadı. 15 dk sonra tekrar deneniyor…');
+          await this._sleep(NO_STREAM_WAIT_MS);
           await this._cleanup();
           continue;
         }
@@ -588,8 +590,8 @@ export class TwitchDropsBot {
       }
 
       if (this._idleCount >= 4) {
-        this.log('warn', '⚠️ Uzun süredir ilerleme yok (Tüm drop limitleri dolmuş olabilir).');
-        this.sleepingUntil = Date.now() + (4 * 60 * 60 * 1000); 
+        this.log('warn', '⚠️ Uzun süredir ilerleme yok (Tüm drop limitleri dolmuş olabilir). 1 saat uyku moduna geçiliyor...');
+        this.sleepingUntil = Date.now() + SLEEP_DURATION_MS; 
         this._idleCount = 0;
         clearInterval(this._claimTimer);
         clearInterval(this._streamTimer);
