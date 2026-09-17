@@ -23,10 +23,13 @@ $('btnLogout').addEventListener('click', () => {
 // Takip Sistemi (Değişkenler üste taşındı)
 
 function formatUptime(uptimeMs) {
-  if(!uptimeMs || uptimeMs <= 0) return '00:00';
+  if(!uptimeMs || uptimeMs <= 0) return '00:00:00';
   const h = String(Math.floor(uptimeMs / 3600000)).padStart(2,'0');
   const m = String(Math.floor((uptimeMs % 3600000) / 60000)).padStart(2,'0');
-  return `${h}:${m}`;
+  const s = String(Math.floor((uptimeMs % 60000) / 1000)).padStart(2,'0');
+  
+  if (h === '00') return `${m}:${s}`;
+  return `${h}:${m}:${s}`;
 }
 
 async function fetchStats(login) {
