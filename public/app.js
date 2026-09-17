@@ -159,7 +159,8 @@ function renderInventory(invList, currentName, currentProg) {
   }
 
   // Envanter listesinin "imzasını" çıkar: isimler + resimler (progress haric, o ayrı güncelleniyor)
-  const structureHash = invList.map(i => `${i.name}|${i.image}`).join(',');
+  // null image'lar sabit string olarak tutulur ki hash her seferinde değişmesin
+  const structureHash = invList.map(i => `${i.name}|${i.image || 'null'}`).join(',');
   
   if (structureHash !== lastInventoryHash) {
     // Yapı değişti: tüm kartları yeniden çiz
@@ -178,15 +179,18 @@ function renderInventory(invList, currentName, currentProg) {
       const activeBadge  = isActive  ? '<span class="drop-active-badge">● AKTİF</span>' : '';
       const expiredBadge = isExpired ? '<span class="drop-expired-badge">× Bitti</span>'  : '';
       const pctBadge     = !isCompleted ? `<span class="drop-pct-badge">%${p}</span>` : '';
-      const imgSrc = item.image || 'https://static-cdn.jtvnw.net/drops/fallback.png';
+      const imgSrc = item.image || null;
       const displayName = esc(item.name.replace(' (Alındı)', '').replace(' (Süresi Bitti)', ''));
       const suffix = isCompleted ? ' ✔' : isExpired ? ' (Sona Erdi)' : '';
       const safeId = 'drop_' + btoa(encodeURIComponent(item.name + (item.image||''))).replace(/[^a-z0-9]/gi,'').slice(0,20);
+      const imgTag = imgSrc
+        ? `<img class="drop-img" src="${imgSrc}" alt="${displayName}" loading="lazy" onerror="this.onerror=null;this.src='https://static-cdn.jtvnw.net/drops/fallback.png';this.style.objectFit='contain';this.style.padding='20px'" />`
+        : `<div class="drop-img-placeholder">🎁</div>`;
 
       return `
         <div class="${cardClass}" id="${safeId}">
           <div class="drop-img-wrap">
-            <img class="drop-img" src="${imgSrc}" alt="${displayName}" loading="lazy" />
+            ${imgTag}
             ${activeBadge}${expiredBadge}${pctBadge}
           </div>
           <div class="drop-body">

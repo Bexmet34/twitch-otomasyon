@@ -401,7 +401,14 @@ export class TwitchDropsBot {
                 results.push({ name: name.substring(0,30) + ' (Alındı)', progress: 100, image: img.src });
             }
         });
-        return results;
+        // blob:, data: veya geçersiz URL'leri temizle; sadece http(s) ile başlayan ve anlamlı uzunlukta olanları kabul et
+        const cleaned = results
+          .map(r => ({
+            ...r,
+            image: (r.image && r.image.startsWith('http') && r.image.length > 20) ? r.image : null
+          }))
+          .filter(r => r.name && r.name !== 'Bilinmeyen Drop' && r.name.length > 1);
+        return cleaned;
       }).catch(() => []);
 
       this.stats.inventory = inventoryData;
