@@ -128,10 +128,13 @@
         </div>
 
         <div class="stats-grid">
-          <div class="stat-box" style="position:relative; overflow:hidden;">
-            <div class="working-bar" style="position:absolute; top:0; left:0; width:100%; height:3px;" id="uiWorkBar"></div>
-            <div style="color:var(--text-muted); font-size:0.9rem;">İzlenen Kanal</div>
-            <div class="val" id="uiChannel" style="color:var(--cyan); text-shadow: 0 0 8px rgba(0,229,255,0.3);">—</div>
+          <div class="stat-box" style="position:relative; overflow:hidden; padding-bottom: 10px;">
+            <div class="working-bar" style="position:absolute; top:0; left:0; width:100%; height:3px; display:none;" id="uiWorkBar"></div>
+            <div style="color:var(--text-muted); font-size:0.85rem; margin-bottom: 8px;">İzlenen Kanal</div>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <img id="uiChannelThumb" src="" style="width: 70px; height: 40px; border-radius: 4px; border: 1px solid rgba(145,71,255,0.3); display: none; object-fit: cover;" />
+                <div class="val" id="uiChannel" style="color:var(--cyan); text-shadow: 0 0 8px rgba(0,229,255,0.3); font-size: 1.1rem;">—</div>
+            </div>
           </div>
           <div class="stat-box">
             <div style="color:var(--text-muted); font-size:0.9rem;">Alınan Kutu</div>
@@ -153,6 +156,9 @@
           </div>
           <div class="drop-progress" style="height: 12px; background: rgba(255,255,255,0.1); border-radius: 6px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);">
              <div id="uiCurrentDropFill" style="height: 100%; background: linear-gradient(90deg, var(--purple), var(--cyan)); width: 0%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px var(--cyan);"></div>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; text-align: right; font-style: italic;">
+             * Not: İlerleme yüzdesi Twitch altyapısı gereği anlık değil, 10-15 dakikada bir güncellenir.
           </div>
         </div>
 

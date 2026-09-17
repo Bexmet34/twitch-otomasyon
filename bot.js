@@ -49,6 +49,7 @@ export class TwitchDropsBot {
       dropName:       null,
       nextCheckAt:    null,
       inventory:      [],
+      statusMessage:  'Başlatılıyor...',
     };
     this._claimTimer  = null;
     this._streamTimer = null;
@@ -56,11 +57,16 @@ export class TwitchDropsBot {
     this.sleepingUntil= 0;
   }
 
+  _updateStatus(msg) {
+    this.stats.statusMessage = msg;
+    this.log('info', msg);
+  }
+
   async start() {
     if (this.running) { this.log('warn', 'Bot zaten çalışıyor.'); return; }
     this.running = true;
     this.stats.startedAt = new Date().toISOString();
-    this.log('info', '🚀 Bot başlatılıyor…');
+    this._updateStatus('🚀 Bot başlatılıyor, Twitch.tv\'ye bağlanılıyor...');
     await this._mainLoop();
   }
 

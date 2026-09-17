@@ -55,11 +55,22 @@ async function fetchStats(login) {
 }
 
 // isFirstLoad üste taşındı
+let loaderMsgIndex = 0;
+const loaderMessages = [
+  "Twitch sunucularına bağlanılıyor...",
+  "Hesap oturumu doğrulanıyor...",
+  "Albion Online kategorisindeki aktif kampanyalar taranıyor...",
+  "Drop veren uygun yayıncılar listeleniyor...",
+  "Hedef yayıncıya bağlanılıyor, lütfen bekleyin..."
+];
+
 function renderStats(u) {
   // İlk açılışta loader'ı gizleme mantığı
   if (isFirstLoad) {
-     if (u.isRunning && (!u.stats || !u.stats.currentChannel)) {
-        $('sysLoader').querySelector('.loader-subtitle span').textContent = 'Twitch taranıyor, aktif yayın aranıyor...';
+     if (u.isRunning && (!u.stats || !u.stats.currentChannel || !u.stats.dropName)) {
+        // Kanal bulana kadar mesajları yavaşça döndür
+        loaderMsgIndex = Math.min(loaderMsgIndex + 1, loaderMessages.length - 1);
+        $('sysLoader').querySelector('.loader-subtitle span').textContent = loaderMessages[loaderMsgIndex];
      } else {
         $('sysLoader').classList.add('hidden');
         isFirstLoad = false;
@@ -68,7 +79,8 @@ function renderStats(u) {
 
   $('fullDashboard').style.display = 'block';
   
-  $('uiAvatar').src = esc(u.profile_image_url) || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23333%22/></svg>';
+  // Profil resmini decapi üzerinden dinamik çek
+  $('uiAvatar').src = `https://decapi.me/twitch/avatar/${esc(u.login)}`;
   $('uiName').textContent = esc(u.display_name);
   
   const statusEl = $('uiStatus');
@@ -85,9 +97,14 @@ function renderStats(u) {
   if (s.currentChannel) {
      $('uiChannel').textContent = esc(s.currentChannel);
      $('uiWorkBar').style.display = 'block';
+     $('uiChannelThumb').style.display = 'block';
+     // Thumbnail Twitch cache bozulmasın diye timestamp ile ufak bypass yapıyoruz (her 5 dk'da bir güncellenir)
+     const timeChunk = Math.floor(Date.now() / 300000);
+     $('uiChannelThumb').src = `https://static-cdn.jtvnw.net/previews-ttv/live_user_${s.currentChannel.toLowerCase()}-320x180.jpg?t=${timeChunk}`;
   } else {
      $('uiChannel').textContent = 'Aranıyor...';
      $('uiWorkBar').style.display = 'none';
+     $('uiChannelThumb').style.display = 'none';
   }
   
   $('uiClaimed').textContent = s.claimedCount || 0;
