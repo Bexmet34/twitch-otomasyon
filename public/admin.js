@@ -1,5 +1,36 @@
-let adminPass = prompt("Admin Şifresini Giriniz:");
-if (!adminPass) document.body.innerHTML = '<h1>Giriş Reddedildi</h1>';
+let adminPass = null;
+const $ = id => document.getElementById(id);
+const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+// Global Alert Override
+window.alert = (msg) => {
+  Swal.fire({
+    background: '#18181b', color: '#efeff1', confirmButtonColor: '#9147ff',
+    text: msg,
+    icon: (msg.toLowerCase().includes('hata') || msg.toLowerCase().includes('yanlış')) ? 'error' : 'success',
+    toast: true, position: 'top-end', showConfirmButton: false, timer: 3000
+  });
+};
+
+async function initAdmin() {
+  const { value: pass } = await Swal.fire({
+    title: 'Yönetici Girişi',
+    input: 'password',
+    inputPlaceholder: 'Admin şifresini giriniz',
+    background: '#18181b', color: '#efeff1', confirmButtonColor: '#9147ff',
+    allowOutsideClick: false,
+    allowEscapeKey: false
+  });
+  if (!pass) {
+    document.body.innerHTML = '<h1 style="color:white; text-align:center; margin-top:50px;">Giriş Reddedildi</h1>';
+    return;
+  }
+  adminPass = pass;
+  fetchUsers();
+  connectWS();
+}
+// Uygulamayı başlat
+initAdmin();
 
 const $ = id => document.getElementById(id);
 const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -175,7 +206,14 @@ async function startBot(login) {
 }
 
 async function addTime(login) {
-  const days = prompt(`${login} adlı kullanıcıya kaç GÜN eklemek istiyorsunuz? (Örn: 7, 30)`);
+  const { value: days } = await Swal.fire({
+    title: 'Süre Ekle',
+    text: `${login} adlı kullanıcıya kaç GÜN eklemek istiyorsunuz?`,
+    input: 'number',
+    inputAttributes: { min: 1 },
+    background: '#18181b', color: '#efeff1', confirmButtonColor: '#9147ff', showCancelButton: true
+  });
+  
   if (!days || isNaN(days) || parseInt(days) <= 0) return;
   
   const res = await fetch(`/api/admin/users/${login}/add-time`, {
@@ -194,7 +232,13 @@ async function addTime(login) {
 }
 
 async function resetTime(login) {
-  if(!confirm(`${login} kullanıcısının süresini sıfırlayıp botunu durdurmak istediğinize emin misiniz?`)) return;
+  const { isConfirmed } = await Swal.fire({
+    title: 'Emin misiniz?',
+    text: `${login} kullanıcısının süresi sıfırlanacak ve botu durdurulacak!`,
+    icon: 'warning', showCancelButton: true, confirmButtonColor: '#ff4545',
+    background: '#18181b', color: '#efeff1', confirmButtonText: 'Evet, Sıfırla', cancelButtonText: 'İptal'
+  });
+  if(!isConfirmed) return;
   
   const res = await fetch(`/api/admin/users/${login}/reset-time`, {
     method: 'POST',
@@ -216,7 +260,14 @@ async function stopBot(login) {
 }
 
 async function deleteUser(login) {
-  if(!confirm(`@${login} tamamen silinecek?`)) return;
+  const { isConfirmed } = await Swal.fire({
+    title: 'Kalıcı Silme',
+    text: `@${login} kullanıcısı ve tüm verileri silinecek. Emin misiniz?`,
+    icon: 'error', showCancelButton: true, confirmButtonColor: '#ff4545',
+    background: '#18181b', color: '#efeff1', confirmButtonText: 'Evet, Sil'
+  });
+  if(!isConfirmed) return;
+
   await fetch(`/api/admin/users/${login}`, { method: 'DELETE', headers: { 'x-admin-password': adminPass } });
   fetchUsers();
 }
@@ -263,7 +314,13 @@ $('btnOpenModal').onclick = () => $('genModal').classList.add('active');
 $('btnCloseModal').onclick = () => $('genModal').classList.remove('active');
 
 $('btnRestartServer').addEventListener('click', async () => {
-  if(!confirm('Sunucuyu yeniden başlat?')) return;
+  const { isConfirmed } = await Swal.fire({
+    title: 'Yeniden Başlat',
+    text: 'Tüm sistemi yeniden başlatmak istediğinize emin misiniz?',
+    icon: 'warning', showCancelButton: true, confirmButtonColor: '#ffaa00',
+    background: '#18181b', color: '#efeff1', confirmButtonText: 'Evet, Başlat'
+  });
+  if(!isConfirmed) return;
   fetch('/api/admin/restart', { method: 'POST', headers: { 'x-admin-password': adminPass } });
   alert('Yeniden başlatılıyor...');
   setTimeout(()=> location.reload(), 3000);

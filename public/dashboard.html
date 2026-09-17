@@ -6,6 +6,7 @@
   <title>Twitch Drops – Müşteri Paneli</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     body { min-height: 100vh; padding: 20px; }
     .container { max-width: 900px; margin: 0 auto; }
@@ -185,6 +186,21 @@
     </div>
   </div>
   
+  <script>
+    window.alert = (msg) => {
+      Swal.fire({
+        background: '#18181b',
+        color: '#efeff1',
+        confirmButtonColor: '#9147ff',
+        text: msg,
+        icon: (msg.toLowerCase().includes('hata') || msg.toLowerCase().includes('lütfen')) ? 'error' : 'success',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 4000
+      });
+    };
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
