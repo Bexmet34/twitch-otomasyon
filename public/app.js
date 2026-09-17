@@ -6,18 +6,25 @@ let currentLogin = null;
 let ws = null;
 let isFirstLoad = true;
 
-const loginSession = localStorage.getItem('login');
+const loginSession = localStorage.getItem('login') || sessionStorage.getItem('login');
 if (!loginSession) {
   window.location.href = 'login.html';
 } else {
-  // Hemen dashboard başlat
+  // İlk yükleme — loader'ı 3sn sonra kapat (bot hala başlamıyor olsa bile)
   fetchStats(loginSession);
+  setTimeout(() => {
+    $('sysLoader').classList.add('hidden');
+    $('fullDashboard').style.display = 'block';
+    isFirstLoad = false;
+  }, 3000);
+  // Sonrasinda her 10sn'de bir sessiz güncelleme
   checkInterval = setInterval(() => fetchStats(loginSession), 10000);
 }
 
 $('btnLogout').addEventListener('click', () => {
   localStorage.removeItem('login');
-  window.location.href = 'index.html';
+  sessionStorage.removeItem('login');
+  window.location.href = 'login.html';
 });
 
 // Takip Sistemi (Değişkenler üste taşındı)
@@ -62,68 +69,53 @@ async function fetchStats(login) {
 }
 
 function renderStats(u) {
-  // İlk açılışta loader'ı gizleme mantığı
-  if (isFirstLoad) {
-     if (u.isRunning && (!u.stats || !u.stats.currentChannel || !u.stats.dropName)) {
-        // Sunucudan gelen anlık işlem bilgisini ekrana yansıt
-        $('sysLoader').querySelector('.loader-subtitle span').textContent = (u.stats && u.stats.statusText) ? u.stats.statusText : 'Arka plan işlemleri devam ediyor...';
-        
-        // Loader üzerindeki profil fotoğrafı ve ismi
-        if ($('loaderAvatar')) $('loaderAvatar').src = `https://decapi.me/twitch/avatar/${esc(u.login)}`;
-        if ($('loaderName')) $('loaderName').textContent = esc(u.display_name || u.login);
-     } else {
-        $('sysLoader').classList.add('hidden');
-        isFirstLoad = false;
-     }
-  }
-
+  // Dashboard'u göster (ilk açılışta zaten setTimeout ile açılıyor)
   $('fullDashboard').style.display = 'block';
+
+  // Profil resmi: önce DB'deki kayitli URL, yoksa decapi fallback
+  const avatarSrc = u.profile_image_url
+    ? u.profile_image_url
+    : `https://decapi.me/twitch/avatar/${esc(u.login)}`;
   
-  // Profil resmini decapi üzerinden dinamik çek
-  $('uiAvatar').src = `https://decapi.me/twitch/avatar/${esc(u.login)}`;
-  $('uiName').textContent = esc(u.display_name);
-  
+  // Sadece değiştiyse yaz (flicker önlemek için)
+  if ($('uiAvatar').src !== avatarSrc) $('uiAvatar').src = avatarSrc;
+  if ($('uiName').textContent !== esc(u.display_name || u.login)) $('uiName').textContent = esc(u.display_name || u.login);
+
   const statusEl = $('uiStatus');
-  if (u.isRunning) {
-    statusEl.textContent = 'Bot Aktif ve Çalışıyor';
-    statusEl.className = 'uc-status online';
-  } else {
-    statusEl.textContent = 'Bot Durduruldu';
-    statusEl.className = 'uc-status';
-  }
+  const newStatusText = u.isRunning ? 'Bot Aktif ve Çalışıyor' : 'Bot Durduruldu';
+  const newStatusClass = u.isRunning ? 'uc-status online' : 'uc-status';
+  if (statusEl.textContent !== newStatusText) statusEl.textContent = newStatusText;
+  if (statusEl.className !== newStatusClass) statusEl.className = newStatusClass;
 
   const s = u.stats || {};
   
   if (s.currentChannel) {
-     $('uiChannel').textContent = esc(s.currentChannel);
+     if ($('uiChannel').textContent !== esc(s.currentChannel)) $('uiChannel').textContent = esc(s.currentChannel);
      $('uiWorkBar').style.display = 'block';
-     $('uiChannelThumb').style.display = 'block';
-     // Thumbnail Twitch cache bozulmasın diye timestamp ile ufak bypass yapıyoruz (her 5 dk'da bir güncellenir)
      const timeChunk = Math.floor(Date.now() / 300000);
-     $('uiChannelThumb').src = `https://static-cdn.jtvnw.net/previews-ttv/live_user_${s.currentChannel.toLowerCase()}-320x180.jpg?t=${timeChunk}`;
+     const thumbSrc = `https://static-cdn.jtvnw.net/previews-ttv/live_user_${s.currentChannel.toLowerCase()}-320x180.jpg?t=${timeChunk}`;
+     if ($('uiChannelThumb').dataset.ch !== s.currentChannel) {
+       $('uiChannelThumb').src = thumbSrc;
+       $('uiChannelThumb').dataset.ch = s.currentChannel;
+       $('uiChannelThumb').style.display = 'block';
+     }
   } else {
-     $('uiChannel').textContent = 'Aranıyor...';
+     if ($('uiChannel').textContent !== 'Aranıyor...') $('uiChannel').textContent = 'Aranıyor...';
      $('uiWorkBar').style.display = 'none';
      $('uiChannelThumb').style.display = 'none';
   }
   
-  $('uiClaimed').textContent = s.claimedCount || 0;
+  const claimed = String(s.claimedCount || 0);
+  if ($('uiClaimed').textContent !== claimed) $('uiClaimed').textContent = claimed;
   
-  if (s.dropName) {
-    // Pulse artık envanter kartlarında gösteriliyor, ayrı bar yok
-  }
-  
-  $('uiUptime').textContent = formatTimeLeft(u.expiresAt);
+  const timeStr = formatTimeLeft(u.expiresAt);
+  if ($('uiUptime').textContent !== timeStr) $('uiUptime').textContent = timeStr;
 
-  // Kalan Süre rengini ayarla (Süre bittiyse kırmızı)
+  // Kalan süre rengi
   const timeLeftMs = new Date(u.expiresAt).getTime() - Date.now();
-  if (timeLeftMs <= 0) {
-     $('uiUptime').style.color = '#ff4545';
-  } else {
-     $('uiUptime').style.color = '#fff';
-  }
+  $('uiUptime').style.color = timeLeftMs <= 0 ? '#ff4545' : '#fff';
   
-  // Süre bitse de bitmese de uzatma alanı her zaman açık kalacak
+  // Uzatma alanı her zaman açık
   $('uiRenewSection').style.display = 'flex';
 
   renderInventory(s.inventory, s.dropName, s.dropProgress);

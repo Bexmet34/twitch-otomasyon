@@ -304,15 +304,25 @@ export class TwitchDropsBot {
     this.log('info', '🔎 Drop envanteri kontrol ediliyor…');
 
     const page = await this._newPage();
+    
+    // Inventory sayfasinda görsel ve resim isteklerine izin ver (drop resimleri icin gerekli)
+    await page.setRequestInterception(false);
+    
     try {
       await page.goto('https://www.twitch.tv/drops/inventory', {
-        waitUntil: 'domcontentloaded', timeout: 20_000,
+        waitUntil: 'networkidle2', timeout: 30_000,
       });
-      await this._sleep(3_000);
+      await this._sleep(6_000); // Twitch dinamik render icin uzun bekle
 
       const inventoryData = await page.evaluate(() => {
         const results = [];
-        const progressBars = document.querySelectorAll('[data-a-target="tw-progress-bar-animation"], [role="progressbar"]');
+        
+        // Twitch'in yeni ve eski HTML yapısını destekleyen geniş selector seti
+        const progressBars = document.querySelectorAll(
+          '[data-a-target="tw-progress-bar-animation"], [role="progressbar"], ' +
+          '[data-test-selector*="progress"], .progress-bar__fill'
+        );
+        
         progressBars.forEach(bar => {
           let progress = parseInt(bar.getAttribute('value')) || 
                          parseInt(bar.getAttribute('aria-valuenow')) || 
@@ -320,51 +330,75 @@ export class TwitchDropsBot {
           let container = bar;
           let name = 'Bilinmeyen Drop';
           let image = null;
-          for (let i = 0; i < 8; i++) {
+          
+          // 12 seviye yukarıya çıkarak kapsayıcı div'i bul
+          for (let i = 0; i < 12; i++) {
               container = container.parentElement;
               if (!container) break;
-              const nameEl = container.querySelector('h4, h3, p.tw-strong, .tw-title, [data-test-selector*="reward-name"]');
-              if (nameEl && nameEl.textContent.trim().length > 0) {
+              const nameEl = container.querySelector(
+                'h4, h3, h2, p.tw-strong, .tw-title, ' +
+                '[data-test-selector*="reward-name"], [data-test-selector*="drop-name"], ' +
+                '.ScTitleText-sc, p[title]'
+              );
+              if (nameEl && nameEl.textContent.trim().length > 1) {
                   name = nameEl.textContent.trim();
-                  const imgEl = container.querySelector('img');
-                  if (imgEl) image = imgEl.src;
+                  // Görsel: campaign veya chest içeren src'yi öncele
+                  const imgs = container.querySelectorAll('img');
+                  for (const img of imgs) {
+                    if (img.src && (img.src.includes('campaign') || img.src.includes('chest') || img.src.includes('drop'))) {
+                      image = img.src;
+                      break;
+                    }
+                  }
+                  if (!image && imgs[0]) image = imgs[0].src;
                   break;
               }
           }
+          
+          // Fallback: % ifadesi geçen bir <p> bul
           if (name === 'Bilinmeyen Drop' && container) {
-              const allP = container.querySelectorAll('p');
+              const allP = container.querySelectorAll('p, span');
               for (const p of allP) {
                   if (p.textContent.includes('%')) {
-                      const img = container.querySelector('img');
-                      if (img && img.alt) name = img.alt;
-                      const match = p.textContent.match(/%(\d+)/);
-                      if(match && progress === 0) progress = parseInt(match[1]);
+                      const imgs = container.querySelectorAll('img');
+                      if (imgs[0]) { name = imgs[0].alt || 'Drop'; image = imgs[0].src; }
+                      const match = p.textContent.match(/(\d+)\s*%|%(\d+)/);
+                      if(match && progress === 0) progress = parseInt(match[1] || match[2]);
                       break;
                   }
               }
           }
-          if (container && (container.textContent.includes('Bu kampanya kapanmış') || container.textContent.includes('ended'))) {
-              name = name + ' (Süresi Bitti)';
-          }
+          
+          const isExpired = container && (
+            container.textContent.includes('Bu kampanya kapanmış') ||
+            container.textContent.includes('ended') ||
+            container.textContent.includes('Closed')
+          );
+          if (isExpired) name = name + ' (Süresi Bitti)';
 
           if(!results.find(r => r.name === name && r.image === image)) {
              results.push({ name, progress, image });
           }
         });
 
-        const allImages = document.querySelectorAll('img[src*="campaign"], img[src*="chest"]');
+        // İkinci geçiş: alınmış ödüller (Claim edilmiş)
+        const allImages = document.querySelectorAll('img[src*="campaign"], img[src*="chest"], img[src*="drop"]');
         allImages.forEach(img => {
             if(results.find(r => r.image === img.src)) return;
-            let container = img.closest('div[data-test-selector]') || img.parentElement.parentElement;
-            if (container && (container.textContent.includes('önce') || container.textContent.includes('Claim') || container.textContent.includes('Alındı') || container.textContent.includes('ago') || container.textContent.includes('hakkında'))) {
-                let name = 'Alınan Ödül';
-                const siblingText = img.parentElement.nextElementSibling;
+            let container = img.closest('div[data-test-selector]') || img.parentElement?.parentElement;
+            if (container && (
+              container.textContent.includes('önce') ||
+              container.textContent.includes('Claim') ||
+              container.textContent.includes('Alındı') ||
+              container.textContent.includes('ago') ||
+              container.textContent.includes('Redeemed')
+            )) {
+                let name = img.alt || 'Alınan Ödül';
+                const siblingText = img.parentElement?.nextElementSibling;
                 if (siblingText && siblingText.textContent.trim()) {
                   name = siblingText.textContent.trim();
-                } else if (img.alt) {
-                  name = img.alt;
                 }
-                results.push({ name: name.substring(0,25) + ' (Alındı)', progress: 100, image: img.src });
+                results.push({ name: name.substring(0,30) + ' (Alındı)', progress: 100, image: img.src });
             }
         });
         return results;
