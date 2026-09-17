@@ -120,13 +120,11 @@ function connectWS(login) {
   ws.addEventListener('open', () => {
     // Sadece bu kullanıcı adının loglarını istiyorum mesajı gönder
     ws.send(JSON.stringify({ type: 'auth', login: login }));
-    $('terminal').innerHTML = '<div class="log-line"><span class="log-msg" style="color:#00ff80;">[BAĞLANDI] Canlı veri akışı başlatıldı...</span></div>';
   });
 
   ws.addEventListener('message', evt => {
     try {
       const d = JSON.parse(evt.data);
-      if (d.type === 'log') appendLog(d);
       if (d.type === 'my_stat') renderStats({ ...d.data, login: currentLogin });
     } catch (_) {}
   });
@@ -134,32 +132,6 @@ function connectWS(login) {
   ws.addEventListener('close', () => {
     if (currentLogin) setTimeout(() => connectWS(currentLogin), 3000);
   });
-}
-
-function appendLog(log) {
-  const term = $('terminal');
-  const div = document.createElement('div');
-  div.className = 'log-line';
-  
-  let lvlClass = 'level-info';
-  if(log.level === 'warn') lvlClass = 'level-warn';
-  if(log.level === 'error') lvlClass = 'level-error';
-  if(log.level === 'success') lvlClass = 'level-success';
-
-  div.innerHTML = `
-    <span class="log-time">[${esc(log.time)}]</span>
-    <span class="log-level ${lvlClass}">${esc(log.level.toUpperCase())}</span>
-    <span class="log-msg">${esc(log.message)}</span>
-  `;
-  
-  term.appendChild(div);
-  // Auto scroll
-  term.scrollTop = term.scrollHeight;
-  
-  // 100 satırı geçmesin
-  while (term.children.length > 100) {
-    term.removeChild(term.firstChild);
-  }
 }
 
 // Auto fetch removed from bottom, placed at the top.
