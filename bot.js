@@ -342,15 +342,27 @@ export class TwitchDropsBot {
               );
               if (nameEl && nameEl.textContent.trim().length > 1) {
                   name = nameEl.textContent.trim();
-                  // Görsel: campaign veya chest içeren src'yi öncele
+                  
+                  // Görsel öncelik sırası:
+                  // 1. Sandık/ödül resmi (chest, reward, item) — asıl istenen
+                  // 2. campaign-drops içindeki resimler
+                  // 3. İlk bulunan resim (fallback)
                   const imgs = container.querySelectorAll('img');
+                  let chestImg = null, campaignImg = null, fallbackImg = null;
+                  
                   for (const img of imgs) {
-                    if (img.src && (img.src.includes('campaign') || img.src.includes('chest') || img.src.includes('drop'))) {
-                      image = img.src;
-                      break;
+                    if (!img.src || !img.src.startsWith('http')) continue;
+                    const s = img.src.toLowerCase();
+                    if (s.includes('chest') || s.includes('reward') || s.includes('item') || s.includes('drop-reward')) {
+                      chestImg = img.src; break; // En iyi eşleşme, hemen dur
                     }
+                    if (s.includes('campaign') || s.includes('drop')) {
+                      if (!campaignImg) campaignImg = img.src;
+                    }
+                    if (!fallbackImg) fallbackImg = img.src;
                   }
-                  if (!image && imgs[0]) image = imgs[0].src;
+                  
+                  image = chestImg || campaignImg || fallbackImg;
                   break;
               }
           }
