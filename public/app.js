@@ -22,9 +22,12 @@ $('btnLogout').addEventListener('click', () => {
 
 // Takip Sistemi (Değişkenler üste taşındı)
 
-function formatUptime(uptimeMs) {
-  if(!uptimeMs || uptimeMs <= 0) return '0dk';
-  const totalMin = Math.floor(uptimeMs / 60000);
+function formatTimeLeft(expiresAt) {
+  if(!expiresAt) return 'Süresiz';
+  const timeLeftMs = new Date(expiresAt).getTime() - Date.now();
+  if (timeLeftMs <= 0) return 'Süresi Doldu';
+  
+  const totalMin = Math.floor(timeLeftMs / 60000);
   const d = Math.floor(totalMin / 1440);
   const h = Math.floor((totalMin % 1440) / 60);
   const m = totalMin % 60;
@@ -116,7 +119,7 @@ function renderStats(u) {
     $('uiCurrentDropFill').style.width = '0%';
   }
   
-  $('uiUptime').textContent = formatUptime(s.uptimeMs);
+  $('uiUptime').textContent = formatTimeLeft(u.expiresAt);
 
   renderInventory(s.inventory, s.dropName, s.dropProgress);
 }
