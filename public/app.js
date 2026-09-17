@@ -198,9 +198,36 @@ function connectWS(login) {
   ws.addEventListener('message', evt => {
     try {
       const d = JSON.parse(evt.data);
+      
+      // İstatistik Güncellemesi
       if (d.type === 'my_stat') {
          currentUserData = { ...currentUserData, isRunning: d.data.isRunning, stats: d.data.stats, login: currentLogin };
          renderStats(currentUserData);
+      }
+      
+      // Canlı Bot Logları (Terminal)
+      if (d.type === 'log') {
+         const terminal = $('uiTerminal');
+         if (terminal) {
+            let color = '#a1a1aa'; // default / info
+            if (d.level === 'error') color = '#ff4545';
+            else if (d.level === 'warn') color = '#ffaa00';
+            else if (d.level === 'success') color = '#4ade80';
+            else if (d.message.includes('bulundu')) color = '#00e5ff'; // cyan highlight
+            
+            const div = document.createElement('div');
+            div.style.color = color;
+            div.innerHTML = `<span style="opacity:0.6">[${d.time}]</span> ${d.message}`;
+            terminal.appendChild(div);
+            
+            // Auto scroll to bottom
+            terminal.scrollTop = terminal.scrollHeight;
+            
+            // 50'den fazla log birikirse en eskisini sil
+            if (terminal.children.length > 50) {
+               terminal.removeChild(terminal.firstChild);
+            }
+         }
       }
     } catch (_) {}
   });

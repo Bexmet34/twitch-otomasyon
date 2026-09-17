@@ -343,7 +343,7 @@ export class TwitchDropsBot {
                   }
               }
           }
-          if(!results.find(r => r.name === name)) {
+          if(!results.find(r => r.name === name && r.image === image)) {
              results.push({ name, progress, image });
           }
         });

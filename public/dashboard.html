@@ -27,19 +27,32 @@
     .uc-status { font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; background: rgba(255,255,255,0.1); display: inline-block; margin-top:5px; }
     .uc-status.online { background: rgba(0, 255, 128, 0.2); color: #00ff80; }
 
-    /* İstatistikler (Eski tasarım) */
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
-    .stat-box { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
-    .stat-box .val { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: bold; color: var(--accent); margin-top: 5px; }
+    /* İstatistikler (Yeni Neon Tasarım) */
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px; }
+    .stat-box { 
+      background: rgba(15, 15, 25, 0.7); padding: 20px; border-radius: 16px; text-align: center; 
+      border: 1px solid rgba(145, 71, 255, 0.3); 
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(145, 71, 255, 0.05);
+      backdrop-filter: blur(10px); transition: transform 0.3s;
+    }
+    .stat-box:hover { transform: translateY(-5px); border-color: var(--cyan); box-shadow: 0 10px 30px rgba(0, 229, 255, 0.15); }
+    .stat-box .val { font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: bold; color: var(--accent); margin-top: 8px; }
 
-    /* Envanter */
+    /* Envanter (Yeni Glow Tasarım) */
     .inventory-section { margin-bottom: 25px; }
-    .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; }
-    .drop-item { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-    .drop-item img { width: 100%; height: 100px; object-fit: contain; border-radius: 6px; background: rgba(0,0,0,0.5); }
-    .drop-title { font-size: 0.9rem; font-weight: 500; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .drop-progress { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
-    .drop-progress-fill { height: 100%; background: var(--accent); }
+    .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; margin-top: 15px; }
+    .drop-item { 
+      background: linear-gradient(180deg, rgba(20,20,30,0.8) 0%, rgba(10,10,15,0.9) 100%);
+      border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 14px; padding: 15px; 
+      display: flex; flex-direction: column; gap: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s;
+    }
+    .drop-item:hover { border-color: var(--cyan); box-shadow: 0 8px 25px rgba(0, 229, 255, 0.15); transform: translateY(-3px); }
+    .drop-item img { width: 100%; height: 110px; object-fit: cover; border-radius: 8px; background: rgba(0,0,0,0.5); }
+    .drop-title { font-size: 0.95rem; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+    .drop-progress { width: 100%; height: 8px; background: rgba(0,0,0,0.5); border-radius: 4px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
+    .drop-progress-fill { height: 100%; background: linear-gradient(90deg, var(--purple), var(--cyan)); box-shadow: 0 0 10px var(--cyan); }
 
     /* Log Terminal */
     .terminal { background: #0a0a0f; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; height: 250px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.6; }
@@ -139,8 +152,8 @@
             <div class="working-bar" style="position:absolute; top:0; left:0; width:100%; height:3px; display:none;" id="uiWorkBar"></div>
             <div style="color:var(--text-muted); font-size:0.85rem; margin-bottom: 8px;">İzlenen Kanal</div>
             <div style="display:flex; align-items:center; gap:12px;">
-                <img id="uiChannelThumb" src="" style="width: 70px; height: 40px; border-radius: 4px; border: 1px solid rgba(145,71,255,0.3); display: none; object-fit: cover;" />
-                <div class="val" id="uiChannel" style="color:var(--cyan); text-shadow: 0 0 8px rgba(0,229,255,0.3); font-size: 1.1rem;">—</div>
+                <img id="uiChannelThumb" src="" style="width: 70px; height: 40px; border-radius: 4px; border: 1px solid rgba(145,71,255,0.3); display: none; object-fit: cover; box-shadow: 0 0 10px rgba(145,71,255,0.2);" />
+                <div class="val" id="uiChannel" style="color:var(--cyan); text-shadow: 0 0 10px rgba(0,229,255,0.4); font-size: 1.1rem; font-weight:700;">—</div>
             </div>
           </div>
           <div class="stat-box">
@@ -159,10 +172,25 @@
           </div>
         </div>
 
-        <div style="margin-bottom: 25px; padding: 18px; background: rgba(0,0,0,0.4); border-radius: 12px; border: 1px solid rgba(145,71,255,0.3); position:relative; overflow:hidden; box-shadow: inset 0 0 20px rgba(145,71,255,0.05);">
+        <!-- YENİ: Canlı Aktivite Terminali -->
+        <div style="margin-bottom: 25px; padding: 15px; background: rgba(5,5,10,0.8); border-radius: 12px; border: 1px solid rgba(0,229,255,0.2); box-shadow: inset 0 0 20px rgba(0,229,255,0.02); backdrop-filter: blur(10px);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <h3 style="margin:0; font-size: 1.05rem; color: #fff; display:flex; align-items:center; gap:8px;">
+              <span class="live-pulse" style="width:10px; height:10px; border-radius:50%; background:var(--cyan); display:inline-block;"></span>
+              Canlı Aktivite Terminali
+            </h3>
+            <span style="font-size:0.75rem; color:var(--text-muted); font-family: 'JetBrains Mono', monospace; letter-spacing:1px;">LIVE STATUS</span>
+          </div>
+          <div id="uiTerminal" class="custom-scrollbar" style="height: 140px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #a1a1aa; display:flex; flex-direction:column; gap:6px; padding-right:5px;">
+            <div style="color:#4ade80;">[SİSTEM] Bot faaliyetleri izleniyor, güncel işlemler bekleniyor...</div>
+          </div>
+        </div>
+
+        <!-- İlerleme (Progress) Çubuğu -->
+        <div style="margin-bottom: 25px; padding: 18px; background: rgba(20,20,30,0.6); border-radius: 12px; border: 1px solid rgba(145,71,255,0.3); position:relative; overflow:hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
           <div style="display:flex; justify-content:space-between; font-size: 1rem; margin-bottom: 12px;">
              <span style="color:#ddd; display:flex; align-items:center; gap:8px;">
-                <span id="uiPulse" style="width:8px; height:8px; border-radius:50%; background:var(--green); display:none;" class="live-pulse"></span>
+                <span id="uiPulse" style="width:10px; height:10px; border-radius:50%; background:var(--green); display:none;" class="live-pulse"></span>
                 <span>Güncel Hedef: <b id="uiCurrentDropName">Aranıyor...</b></span>
              </span>
              <b id="uiCurrentDropPercent" style="color:#fff; text-shadow: 0 0 10px var(--purple-lite); font-size:1.1rem;">%0</b>
