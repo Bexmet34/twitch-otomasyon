@@ -155,7 +155,7 @@ function renderInventory(invList, currentName, currentProg) {
   
   if (!invList || invList.length === 0) {
     const emptyHash = '__empty__';
-    if (lastInventoryHash === emptyHash) return; // Değişmedi, dokunma
+    if (lastInventoryHash === emptyHash) return;
     lastInventoryHash = emptyHash;
     grid.innerHTML = `
       <div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text-muted); font-size:0.95rem;">
@@ -166,65 +166,129 @@ function renderInventory(invList, currentName, currentProg) {
     return;
   }
 
-  // Envanter listesinin "imzasını" çıkar: isimler + resimler (progress haric, o ayrı güncelleniyor)
-  // null image'lar sabit string olarak tutulur ki hash her seferinde değişmesin
-  const structureHash = invList.map(i => `${i.name}|${i.image || 'null'}`).join(',');
+  // İlerleyen/Aktif droplar ve Alınan dropları ayır
+  const activeDrops = invList.filter(i => i.status !== 'claimed' && !i.name.includes('(Alındı)'));
+  const claimedDrops = invList.filter(i => i.status === 'claimed' || i.name.includes('(Alındı)'));
+
+  // Hash kontrolü
+  const structureHash = invList.map(i => `${i.name}|${i.image || 'null'}|${i.status}|${i.quantity || 1}|${i.date || ''}`).join(',');
   
   if (structureHash !== lastInventoryHash) {
-    // Yapı değişti: tüm kartları yeniden çiz
     lastInventoryHash = structureHash;
-    
-    grid.innerHTML = invList.map(item => {
-      let p = item.progress || 0;
-      if (currentName && item.name === currentName) p = currentProg || p;
-      const isCompleted = p >= 100 || item.name.includes('(Alındı)');
-      const isExpired   = item.name.includes('(Süresi Bitti)');
-      const isActive    = !isCompleted && !isExpired && currentName && item.name === currentName;
 
-      const cardClass = isCompleted ? 'drop-card completed' : isExpired ? 'drop-card expired' : 'drop-card';
-      const fillClass = isCompleted ? 'drop-progress-fill done' : 'drop-progress-fill';
-      const pctLabel  = isCompleted ? '<span class="drop-pct-label done">✔ Tamamlandı</span>' : `<span class="drop-pct-label">%${p}</span>`;
-      const activeBadge  = isActive  ? '<span class="drop-active-badge">● AKTİF</span>' : '';
-      const expiredBadge = isExpired ? '<span class="drop-expired-badge">× Bitti</span>'  : '';
-      const pctBadge     = !isCompleted ? `<span class="drop-pct-badge">%${p}</span>` : '';
-      const imgSrc = item.image || null;
-      const displayName = esc(item.name.replace(' (Alındı)', '').replace(' (Süresi Bitti)', ''));
-      const suffix = isCompleted ? ' ✔' : isExpired ? ' (Sona Erdi)' : '';
-      const safeId = 'drop_' + btoa(encodeURIComponent(item.name + (item.image||''))).replace(/[^a-z0-9]/gi,'').slice(0,20);
-      const imgTag = imgSrc
-        ? `<img class="drop-img" src="${imgSrc}" alt="${displayName}" loading="lazy" onerror="this.onerror=null;this.src='https://static-cdn.jtvnw.net/drops/fallback.png';this.style.objectFit='contain';this.style.padding='20px'" />`
-        : `<div class="drop-img-placeholder">🎁</div>`;
+    let html = '';
 
-      return `
-        <div class="${cardClass}" id="${safeId}">
-          <div class="drop-img-wrap">
-            ${imgTag}
-            ${activeBadge}${expiredBadge}${pctBadge}
-          </div>
-          <div class="drop-body">
-            <div class="drop-name">${displayName}${suffix}</div>
-            <div class="drop-progress-track">
-              <div class="${fillClass}" id="${safeId}_fill" style="width:${Math.min(p,100)}%"></div>
+    // ── 1. AKTİF VE İLERLEYEN DROPLAR ──
+    if (activeDrops.length > 0) {
+      html += activeDrops.map(item => {
+        let p = item.progress || 0;
+        if (currentName && item.name === currentName) p = currentProg || p;
+        const isReady = item.isReadyToClaim || p >= 100 || item.status === 'ready';
+        const isExpired = item.isExpired || item.name.includes('(Süresi Bitti)');
+        const isActive = !isReady && !isExpired && currentName && item.name === currentName;
+
+        const cardClass = isReady ? 'drop-card ready-to-claim' : isExpired ? 'drop-card expired' : 'drop-card';
+        const fillClass = isReady ? 'drop-progress-fill ready' : 'drop-progress-fill';
+        const activeBadge = isActive ? '<span class="drop-active-badge">● AKTİF</span>' : '';
+        const readyBadge = isReady ? '<span class="drop-ready-badge">🎁 DOLDU - ALINABİLİR</span>' : '';
+        const expiredBadge = isExpired ? '<span class="drop-expired-badge">× Bitti</span>' : '';
+        const pctBadge = !isReady && !isExpired ? `<span class="drop-pct-badge">%${p}</span>` : '';
+        const imgSrc = item.image || null;
+        const displayName = esc(item.name.replace(' (Alındı)', '').replace(' (Süresi Bitti)', ''));
+        const safeId = 'drop_' + btoa(encodeURIComponent(item.name + (item.image||''))).replace(/[^a-z0-9]/gi,'').slice(0,20);
+        
+        const imgTag = imgSrc
+          ? `<img class="drop-img" src="${imgSrc}" alt="${displayName}" loading="lazy" onerror="this.onerror=null;this.src='https://static-cdn.jtvnw.net/drops/fallback.png';this.style.objectFit='contain';this.style.padding='20px'" />`
+          : `<div class="drop-img-placeholder">🎁</div>`;
+
+        const actionBtn = isReady
+          ? `<a href="https://www.twitch.tv/drops/inventory" target="_blank" rel="noopener" class="drop-claim-btn">
+              🎁 Twitch'te Talep Et ↗
+             </a>`
+          : '';
+
+        return `
+          <div class="${cardClass}" id="${safeId}">
+            <div class="drop-img-wrap">
+              ${imgTag}
+              ${activeBadge}${readyBadge}${expiredBadge}${pctBadge}
             </div>
-            <span class="drop-pct-label${isCompleted?' done':''}" id="${safeId}_pct">${isCompleted ? '✔ Tamamlandı' : '%'+p}</span>
+            <div class="drop-body">
+              <div class="drop-name">${displayName}</div>
+              <div class="drop-progress-track">
+                <div class="${fillClass}" id="${safeId}_fill" style="width:${Math.min(p,100)}%"></div>
+              </div>
+              <div class="drop-footer-row">
+                <span class="drop-pct-label${isReady ? ' ready' : ''}" id="${safeId}_pct">
+                  ${isReady ? '✔ %100 Doldu (Almaya Hazır)' : '%' + p}
+                </span>
+              </div>
+              ${actionBtn}
+            </div>
           </div>
+        `;
+      }).join('');
+    }
+
+    // ── 2. ALINAN DROPLAR (CLAIMED) ──
+    if (claimedDrops.length > 0) {
+      html += `
+        <div style="grid-column: 1 / -1; margin-top: 18px; margin-bottom: 6px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between;">
+          <h4 style="margin:0; font-size:1rem; font-weight:700; color:#00e676; display:flex; align-items:center; gap:8px;">
+            <span>✔ Alınan Droplar</span>
+            <span style="background:rgba(0,230,118,0.15); color:#00e676; font-size:0.75rem; padding:2px 8px; border-radius:12px; border:1px solid rgba(0,230,118,0.3);">
+              ${claimedDrops.reduce((acc, curr) => acc + (curr.quantity || 1), 0)} Kutu
+            </span>
+          </h4>
         </div>
       `;
-    }).join('');
+
+      html += claimedDrops.map(item => {
+        const qty = item.quantity || 1;
+        const dateStr = item.date || 'Alındı';
+        const imgSrc = item.image || null;
+        const displayName = esc(item.name.replace(' (Alındı)', ''));
+        const safeId = 'drop_' + btoa(encodeURIComponent(item.name + (item.image||'') + dateStr)).replace(/[^a-z0-9]/gi,'').slice(0,20);
+        const qtyBadge = qty > 1 ? `<span class="drop-qty-badge">${qty}x Adet</span>` : `<span class="drop-qty-badge">1x</span>`;
+
+        const imgTag = imgSrc
+          ? `<img class="drop-img" src="${imgSrc}" alt="${displayName}" loading="lazy" onerror="this.onerror=null;this.src='https://static-cdn.jtvnw.net/drops/fallback.png';this.style.objectFit='contain';this.style.padding='20px'" />`
+          : `<div class="drop-img-placeholder">🎁</div>`;
+
+        return `
+          <div class="drop-card claimed" id="${safeId}">
+            <div class="drop-img-wrap">
+              ${imgTag}
+              <span class="drop-claimed-badge">✔ ALINDI</span>
+              ${qtyBadge}
+            </div>
+            <div class="drop-body">
+              <div class="drop-name">${displayName}</div>
+              <div class="drop-claimed-info">
+                <span class="drop-date-tag">⏱ ${esc(dateStr)}</span>
+                <span class="drop-claimed-count">${qty} Adet Sandık</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    grid.innerHTML = html;
     
   } else {
-    // Yapı aynı: sadece progress barları ve yüzdeleri güncelle (DOM yeniden yazma YOK)
-    invList.forEach(item => {
+    // Yapı aynı ise aktif dropların progresslerini güncelle
+    activeDrops.forEach(item => {
       let p = item.progress || 0;
       if (currentName && item.name === currentName) p = currentProg || p;
-      const isCompleted = p >= 100 || item.name.includes('(Alındı)');
+      const isReady = item.isReadyToClaim || p >= 100 || item.status === 'ready';
       const safeId = 'drop_' + btoa(encodeURIComponent(item.name + (item.image||''))).replace(/[^a-z0-9]/gi,'').slice(0,20);
       
       const fillEl = $(safeId + '_fill');
-      const pctEl  = $(safeId + '_pct');
+      const pctEl = $(safeId + '_pct');
       
       if (fillEl) fillEl.style.width = Math.min(p, 100) + '%';
-      if (pctEl)  pctEl.textContent = isCompleted ? '✔ Tamamlandı' : '%' + p;
+      if (pctEl) pctEl.textContent = isReady ? '✔ %100 Doldu (Almaya Hazır)' : '%' + p;
     });
   }
 }
