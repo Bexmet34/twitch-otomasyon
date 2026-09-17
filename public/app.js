@@ -73,13 +73,21 @@ function renderStats(u) {
   // Dashboard'u göster (ilk açılışta zaten setTimeout ile açılıyor)
   $('fullDashboard').style.display = 'block';
 
-  // Profil resmi: önce DB'deki kayitli URL, yoksa decapi fallback
-  const avatarSrc = u.profile_image_url
+  // Profil resmi: DB'deki URL varsa ve geçerliyse kullan, aksi halde decapi
+  const avatarUrl = (u.profile_image_url && u.profile_image_url.startsWith('http'))
     ? u.profile_image_url
-    : `https://decapi.me/twitch/avatar/${esc(u.login)}`;
-  
-  // Sadece değiştiyse yaz (flicker önlemek için)
-  if ($('uiAvatar').src !== avatarSrc) $('uiAvatar').src = avatarSrc;
+    : `https://decapi.me/twitch/avatar/${esc(u.login)}?_=${u.login}`;
+
+  const avatarEl = $('uiAvatar');
+  if (avatarEl.dataset.login !== u.login) {
+    // Kullanıcı değişti veya ilk yükleme: resmi güncelle
+    avatarEl.dataset.login = u.login;
+    avatarEl.src = avatarUrl;
+    avatarEl.onerror = () => {
+      avatarEl.onerror = null;
+      avatarEl.src = 'https://static-cdn.jtvnw.net/user-default-pictures-uv/13e5fa74-defa-11e9-809c-784f43822e80-profile_image-70x70.png';
+    };
+  }
   if ($('uiName').textContent !== esc(u.display_name || u.login)) $('uiName').textContent = esc(u.display_name || u.login);
 
   const statusEl = $('uiStatus');

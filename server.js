@@ -177,11 +177,35 @@ app.post('/api/login', (req, res) => {
 });
 
 // Müşterinin Kendi İstatistiğini Görmesi
-app.get('/api/mystats/:login', (req, res) => {
+app.get('/api/mystats/:login', async (req, res) => {
   const { login } = req.params;
   const user = db.getUser(login);
   if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
   
+  // Profil resmi yoksa veya boşsa Twitch API'den çek ve kaydet
+  if ((!user.profile_image_url || !user.profile_image_url.startsWith('http')) && user.token) {
+    try {
+      const vRes = await fetch('https://id.twitch.tv/oauth2/validate', {
+        headers: { 'Authorization': `OAuth ${user.token}` }
+      });
+      if (vRes.ok) {
+        const vData = await vRes.json();
+        const uRes = await fetch(`https://api.twitch.tv/helix/users?id=${vData.user_id}`, {
+          headers: { 'Authorization': `Bearer ${user.token}`, 'Client-Id': vData.client_id }
+        });
+        if (uRes.ok) {
+          const uData = await uRes.json();
+          if (uData.data && uData.data[0]) {
+            user.profile_image_url = uData.data[0].profile_image_url || '';
+            user.display_name = uData.data[0].display_name || user.display_name;
+            await db.updateUser(user);
+            console.log(`[SİSTEM] ${login} için profil resmi güncellendi.`);
+          }
+        }
+      }
+    } catch (e) { /* Sessizce devam et */ }
+  }
+
   const bot = bots.get(login);
   res.json({
     login: user.login,
@@ -192,6 +216,7 @@ app.get('/api/mystats/:login', (req, res) => {
     stats: bot ? bot.getStats() : null
   });
 });
+
 
 
 // ── ADMIN API'LERİ ──
