@@ -49,6 +49,7 @@ export class TwitchDropsBot {
       dropName:       null,
       nextCheckAt:    null,
       inventory:      [],
+      statusText:     'Başlatılıyor...',
       statusMessage:  'Başlatılıyor...',
     };
     this._claimTimer  = null;
@@ -131,7 +132,10 @@ export class TwitchDropsBot {
 
   // ── SETUP ───────────────────────────────────────────────
 
+  // ── SETUP ───────────────────────────────────────────────
+
   async _setup() {
+    this.stats.statusText = "Twitch sunucularına bağlanılıyor...";
     this.log('info', '🌐 İzole Sekme (Context) oluşturuluyor…');
     if (!sharedBrowser) await initSharedBrowser();
     
@@ -145,6 +149,7 @@ export class TwitchDropsBot {
       domain: '.twitch.tv', path: '/', secure: true, httpOnly: false,
     });
     await tempPage.close();
+    this.stats.statusText = "Hesap oturumu doğrulandı.";
     this.log('info', '🔑 Auth-token yüklendi.');
   }
 
@@ -174,6 +179,7 @@ export class TwitchDropsBot {
   // ── KAMPANYA KONTROLÜ ───────────────────────────────────
 
   async _isCampaignActive() {
+    this.stats.statusText = "Albion Online kategorisindeki kampanyalar taranıyor...";
     this.log('info', '🔎 Aktif Albion Online kampanyası var mı kontrol ediliyor...');
     const page = await this._newPage();
     try {
@@ -201,6 +207,7 @@ export class TwitchDropsBot {
   // ── KANAL BULMA ─────────────────────────────────────────
 
   async _findDropChannel() {
+    this.stats.statusText = "Drop veren uygun yayıncılar aranıyor...";
     this.log('info', '🔍 Albion Online – Drops Enabled kanallar aranıyor…');
     const page = await this._newPage();
     try {
@@ -230,6 +237,7 @@ export class TwitchDropsBot {
   // ── YAYINI İZLE ─────────────────────────────────────────
 
   async _watchChannel(channel) {
+    this.stats.statusText = `Hedef yayıncı (${channel}) bulundu, bağlanılıyor...`;
     this.stats.currentChannel = channel;
     this.log('info', `▶️  ${channel} kanalına bağlanılıyor…`);
     this.streamPage = await this._newPage();

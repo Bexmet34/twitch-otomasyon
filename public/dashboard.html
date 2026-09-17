@@ -93,9 +93,13 @@
   
   <!-- PREMIUM LOADER -->
   <div class="premium-loader" id="sysLoader">
+     <div style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom: 25px;">
+        <img id="loaderAvatar" src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23333%22/></svg>" style="width:50px; height:50px; border-radius:50%; border:2px solid var(--purple-lite); box-shadow:0 0 15px rgba(145,71,255,0.4); object-fit:cover;" />
+        <div id="loaderName" style="color:var(--text); font-weight:600; font-size:0.9rem; letter-spacing:1px;"></div>
+     </div>
      <div class="loader-spinner"></div>
      <div class="loader-title">Sisteme Bağlanılıyor</div>
-     <div class="loader-subtitle"><div class="loader-pulse"></div><span>Canlı yayınlar taranıyor, lütfen bekleyin...</span></div>
+     <div class="loader-subtitle"><div class="loader-pulse"></div><span>Twitch taranıyor, aktif yayın aranıyor...</span></div>
   </div>
 
   <div class="bg-orbs" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>

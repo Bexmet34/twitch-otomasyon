@@ -54,23 +54,16 @@ async function fetchStats(login) {
   }
 }
 
-// isFirstLoad üste taşındı
-let loaderMsgIndex = 0;
-const loaderMessages = [
-  "Twitch sunucularına bağlanılıyor...",
-  "Hesap oturumu doğrulanıyor...",
-  "Albion Online kategorisindeki aktif kampanyalar taranıyor...",
-  "Drop veren uygun yayıncılar listeleniyor...",
-  "Hedef yayıncıya bağlanılıyor, lütfen bekleyin..."
-];
-
 function renderStats(u) {
   // İlk açılışta loader'ı gizleme mantığı
   if (isFirstLoad) {
      if (u.isRunning && (!u.stats || !u.stats.currentChannel || !u.stats.dropName)) {
-        // Kanal bulana kadar mesajları yavaşça döndür
-        loaderMsgIndex = Math.min(loaderMsgIndex + 1, loaderMessages.length - 1);
-        $('sysLoader').querySelector('.loader-subtitle span').textContent = loaderMessages[loaderMsgIndex];
+        // Sunucudan gelen anlık işlem bilgisini ekrana yansıt
+        $('sysLoader').querySelector('.loader-subtitle span').textContent = (u.stats && u.stats.statusText) ? u.stats.statusText : 'Arka plan işlemleri devam ediyor...';
+        
+        // Loader üzerindeki profil fotoğrafı ve ismi
+        if ($('loaderAvatar')) $('loaderAvatar').src = `https://decapi.me/twitch/avatar/${esc(u.login)}`;
+        if ($('loaderName')) $('loaderName').textContent = esc(u.display_name || u.login);
      } else {
         $('sysLoader').classList.add('hidden');
         isFirstLoad = false;
