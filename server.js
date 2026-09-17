@@ -225,6 +225,12 @@ app.post('/api/admin/users/:login/add-time', requireAdmin, async (req, res) => {
   user.expiresAt = currentExpiry + (days * 24 * 60 * 60 * 1000);
   
   await db.updateUser(user);
+  
+  // Eğer bot kapalıysa veya süresi dolduğu için durdurulmuşsa, gün eklendiğinde hemen canlandır
+  if (!bots.has(login)) {
+     await startBotForUser(user);
+  }
+
   res.json({ ok: true, expiresAt: user.expiresAt });
   broadcast({ type: 'refresh_users' });
 });
