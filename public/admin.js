@@ -35,21 +35,49 @@ function fetchLicenses() {
     fetch('/api/admin/licenses', { headers: { 'x-admin-password': adminPass } })
       .then(res => res.json())
       .then(lics => {
-        // En yeniler üstte olsun
-        lics.reverse();
-        $('licenseList').innerHTML = lics.map(l => {
-          const bg = l.used ? 'rgba(255,50,50,0.1)' : 'rgba(0,255,128,0.1)';
-          const border = l.used ? 'rgba(255,50,50,0.3)' : 'rgba(0,255,128,0.3)';
-          const color = l.used ? '#ff5555' : '#00ff80';
-          
-          return `
-          <div style="background:${bg}; border:1px solid ${border}; border-radius:8px; padding:12px; text-align:center;">
-             <div style="font-family:monospace; font-size:1.1rem; color:${color}; font-weight:bold; letter-spacing:1px; margin-bottom:5px;">${l.code}</div>
-             <div style="font-size:0.85rem; color:#ccc;">${l.durationDays || 30} Günlük</div>
-             <div style="font-size:0.8rem; color:#888; margin-top:5px;">${l.used ? `Kullanıldı (@${l.usedBy})` : 'Boşta (Satışa Hazır)'}</div>
-          </div>
-          `;
-        }).join('');
+        const catMap = {
+           unused7: { title: "🟢 Boşta - 7 Günlük Paketler", list: [] },
+           unused30: { title: "🟢 Boşta - 1 Aylık (30 Gün) Paketler", list: [] },
+           unused90: { title: "🟢 Boşta - 3 Aylık (90 Gün) Paketler", list: [] },
+           used: { title: "🔴 Kullanılmış (Aktif/Pasif) Lisanslar", list: [] }
+        };
+        
+        for (const l of lics) {
+           if (l.used) catMap.used.list.push(l);
+           else if (l.durationDays === 7) catMap.unused7.list.push(l);
+           else if (l.durationDays === 30) catMap.unused30.list.push(l);
+           else if (l.durationDays === 90) catMap.unused90.list.push(l);
+           else catMap.unused30.list.push(l); // fallback
+        }
+        
+        let html = '';
+        for (const key in catMap) {
+           const c = catMap[key];
+           if (c.list.length === 0) continue;
+           
+           c.list.reverse(); // Yeniler üstte
+           
+           html += `<h4 class="category-title">${c.title} (${c.list.length} adet)</h4>`;
+           html += `<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px;">`;
+           
+           html += c.list.map(l => {
+              const bg = l.used ? 'rgba(255,50,50,0.1)' : 'rgba(0,255,128,0.1)';
+              const border = l.used ? 'rgba(255,50,50,0.3)' : 'rgba(0,255,128,0.3)';
+              const color = l.used ? '#ff5555' : '#00ff80';
+              return `
+              <div style="background:${bg}; border:1px solid ${border}; border-radius:8px; padding:12px; text-align:center;">
+                 <div style="font-family:monospace; font-size:1.1rem; color:${color}; font-weight:bold; letter-spacing:1px; margin-bottom:5px;">${l.code}</div>
+                 <div style="font-size:0.85rem; color:#ccc;">${l.durationDays || 30} Günlük</div>
+                 <div style="font-size:0.8rem; color:#888; margin-top:5px;">${l.used ? `(@${l.usedBy})` : 'Satışa Hazır'}</div>
+              </div>
+              `;
+           }).join('');
+           
+           html += `</div>`;
+        }
+        
+        if (html === '') html = '<div style="color:#aaa;">Henüz hiç lisans üretilmemiş.</div>';
+        $('licenseCategories').innerHTML = html;
       });
   } catch(e) {}
 }
@@ -137,7 +165,8 @@ async function deleteUser(login) {
 }
 
 $('btnGenLicense').addEventListener('click', async () => {
-  const amount = parseInt($('licenseCount').value) || 1;
+  const amount = parseInt($('licenseCount').value);
+  if (!amount || amount < 1) return alert("Lütfen adet girin.");
   const duration = parseInt($('licenseDuration').value) || 30;
   
   $('btnGenLicense').textContent = 'Üretiliyor...';
@@ -149,7 +178,8 @@ $('btnGenLicense').addEventListener('click', async () => {
   });
   const d = await res.json();
   
-  $('btnGenLicense').textContent = '🔑 Toplu Lisans Üret';
+  $('btnGenLicense').textContent = 'Üret';
+  $('genModal').classList.remove('active');
   
   if(d.ok) {
      const out = $('licenseOutput');
@@ -161,6 +191,19 @@ $('btnGenLicense').addEventListener('click', async () => {
      fetchLicenses();
   }
 });
+
+// UI Etkileşimleri (Sekmeler ve Modal)
+$('tabUsersBtn').onclick = () => {
+   $('tabUsersBtn').classList.add('active'); $('tabLicensesBtn').classList.remove('active');
+   $('tabUsers').classList.add('active'); $('tabLicenses').classList.remove('active');
+};
+$('tabLicensesBtn').onclick = () => {
+   $('tabLicensesBtn').classList.add('active'); $('tabUsersBtn').classList.remove('active');
+   $('tabLicenses').classList.add('active'); $('tabUsers').classList.remove('active');
+};
+
+$('btnOpenModal').onclick = () => $('genModal').classList.add('active');
+$('btnCloseModal').onclick = () => $('genModal').classList.remove('active');
 
 $('btnRestartServer').addEventListener('click', async () => {
   if(!confirm('Sunucuyu yeniden başlat?')) return;

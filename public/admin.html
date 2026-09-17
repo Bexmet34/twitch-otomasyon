@@ -35,6 +35,23 @@
     .uc-progress { margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); }
     .uc-progress-bar { width: 100%; height: 6px; background: rgba(0,0,0,0.3); border-radius: 3px; margin-top: 4px; overflow: hidden; }
     .uc-progress-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; }
+    
+    /* Sekmeler */
+    .admin-tabs { display: flex; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
+    .admin-tabs button { background: transparent; border: none; color: #888; font-size: 1.1rem; font-weight: 600; cursor: pointer; padding: 10px 20px; transition: 0.3s; }
+    .admin-tabs button.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+    
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+    .modal-overlay.active { display: flex; }
+    .modal-content { background: rgba(20,20,30,1); border: 1px solid rgba(255,255,255,0.1); padding: 30px; border-radius: 12px; width: 400px; max-width: 90%; }
+    .modal-content h3 { margin-top: 0; color: #fff; margin-bottom: 20px; }
+    .modal-content input, .modal-content select { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 12px; border-radius: 6px; margin-bottom: 15px; }
+    
+    .category-title { margin-top: 30px; margin-bottom: 15px; color: #fff; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 5px; }
   </style>
 </head>
 <body>
@@ -56,28 +73,54 @@
 
     <main style="padding: 20px 0;">
       
-      <div class="add-user-box glass" style="flex-direction: column; gap: 15px;">
-        <div style="display:flex; gap:10px;">
-           <input type="number" id="licenseCount" placeholder="Miktar (Örn: 50)" style="width:130px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px; border-radius: 6px;" />
-           <select id="licenseDuration" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px; border-radius: 6px;">
-             <option value="7">7 Günlük</option>
-             <option value="30" selected>1 Aylık (30 Gün)</option>
-             <option value="90">3 Aylık (90 Gün)</option>
-           </select>
-           <button class="btn" id="btnGenLicense" style="background: #ffaa00; border-color: #ffaa00; flex:1;">🔑 Toplu Lisans Üret</button>
-        </div>
-        <textarea id="licenseOutput" placeholder="Üretilen kodlar toplu olarak buraya kopyalamanız için düşer..." style="width:100%; height:120px; background:rgba(0,0,0,0.3); color:#00ff80; border:1px dashed rgba(255,255,255,0.2); padding:10px; font-family:monospace; margin-top:10px; border-radius: 8px; font-size:1.1rem; line-height: 1.5; resize:none;" readonly></textarea>
-        
-        <h4 style="margin-top: 20px; color:#aaa;">Sistemdeki Tüm Lisanslar</h4>
-        <div id="licenseList" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; max-height:300px; overflow-y:auto; margin-top:10px; padding-right:10px;"></div>
+      <div class="admin-tabs">
+        <button id="tabUsersBtn" class="active">👥 Müşteriler</button>
+        <button id="tabLicensesBtn">🔑 Lisans Yönetimi</button>
       </div>
 
-      <div class="users-grid" id="usersGrid">
-        <!-- Kullanıcı Kartları Buraya Gelecek -->
+      <!-- Müşteriler Sekmesi -->
+      <div id="tabUsers" class="tab-content active">
+        <div class="users-grid" id="usersGrid">
+          <!-- Kullanıcı Kartları Buraya Gelecek -->
+        </div>
+      </div>
+
+      <!-- Lisanslar Sekmesi -->
+      <div id="tabLicenses" class="tab-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+           <h3 style="margin:0;">Lisans Envanteri</h3>
+           <button class="btn" id="btnOpenModal" style="background:#00ff80; color:#000; font-weight:bold;">+ Yeni Kod Üret</button>
+        </div>
+        
+        <textarea id="licenseOutput" placeholder="Yeni üretilen kodlar toplu olarak buraya düşer..." style="display:none; width:100%; height:120px; background:rgba(0,0,0,0.3); color:#00ff80; border:1px dashed rgba(255,255,255,0.2); padding:10px; font-family:monospace; margin-bottom:20px; border-radius: 8px; font-size:1.1rem; resize:none;" readonly></textarea>
+        
+        <div id="licenseCategories"></div>
       </div>
 
     </main>
 
+  </div>
+  
+  <!-- Kod Üretme Modalı -->
+  <div class="modal-overlay" id="genModal">
+    <div class="modal-content">
+      <h3>Yeni Lisans Üret</h3>
+      
+      <label style="color:#aaa; font-size:0.9rem; margin-bottom:5px; display:block;">Üretim Miktarı (Adet)</label>
+      <input type="number" id="licenseCount" placeholder="Örn: 50" min="1" required />
+      
+      <label style="color:#aaa; font-size:0.9rem; margin-bottom:5px; display:block;">Lisans Süresi (Kategori)</label>
+      <select id="licenseDuration">
+        <option value="7">7 Günlük</option>
+        <option value="30" selected>1 Aylık (30 Gün)</option>
+        <option value="90">3 Aylık (90 Gün)</option>
+      </select>
+      
+      <div style="display:flex; gap:10px; margin-top:20px;">
+         <button class="btn" id="btnCloseModal" style="background:rgba(255,255,255,0.1); color:white; flex:1;">İptal</button>
+         <button class="btn" id="btnGenLicense" style="background:#ffaa00; border-color:#ffaa00; flex:1; color:#000;">Üret</button>
+      </div>
+    </div>
   </div>
   
   <script src="admin.js"></script>
