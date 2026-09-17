@@ -116,14 +116,15 @@ function renderUsers() {
   
   grid.innerHTML = users.map(u => {
     const hasBot = u.isRunning;
-    let timeRemaining = "Süresiz";
+    let timeRemainingText = "Süresiz";
     if (u.expiresAt) {
        const left = u.expiresAt - Date.now();
-       if (left <= 0) timeRemaining = '<span style="color:red">SÜRESİ BİTTİ</span>';
-       else {
+       if (left <= 0) {
+          timeRemainingText = '<span style="color:#ff4545; font-weight:bold;">SÜRESİ DOLDU</span>';
+       } else {
          const d = Math.floor(left / (1000 * 60 * 60 * 24));
          const h = Math.floor((left / (1000 * 60 * 60)) % 24);
-         timeRemaining = `<span style="color:var(--accent)">${d} Gün, ${h} Saat Kaldı</span>`;
+         timeRemainingText = `<span style="color:#00e5ff; font-weight:bold;">${d} Gün, ${h} Saat Kaldı</span>`;
        }
     }
     
@@ -143,11 +144,22 @@ function renderUsers() {
             <button class="btn" style="background:#555; padding:5px 10px; font-size:0.75rem; color:#fff;" onclick="resetTime('${u.login}')">Süreyi Sıfırla</button>
          </div>
       </div>
-      <div class="user-stats" style="margin-top:15px; font-size:0.9rem; color:#aaa;">
-         <p><b>E-Posta:</b> ${esc(u.email || 'Bilinmiyor')}</p>
-         <p><b>Lisans Durumu:</b> ${timeRemaining}</p>
-         <p><b>Alınan Kutu:</b> ${u.stats ? u.stats.claimedCount : 0}</p>
-         <p><b>Anlık Hedef:</b> ${(u.stats && u.stats.dropName) ? esc(u.stats.dropName) : 'Yok'}</p>
+      <div class="user-stats" style="margin-top:15px; font-size:0.85rem; color:#ccc; background:rgba(0,0,0,0.25); padding:12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+         <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
+            <span>E-Posta:</span> <span style="color:#fff">${esc(u.email || 'Bilinmiyor')}</span>
+         </div>
+         <div style="display:flex; justify-content:space-between; margin-bottom: 6px; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.05);">
+            <span>Son Lisans Kodu:</span> <span style="color:var(--purple-lite); font-family:monospace; font-weight:bold; letter-spacing:1px;">${esc(u.lastLicenseCode || 'Admin Tarafından (Manuel)')}</span>
+         </div>
+         <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
+            <span>Lisans Durumu:</span> <span>${timeRemainingText}</span>
+         </div>
+         <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
+            <span>Alınan Kutu:</span> <span style="color:var(--yellow); font-weight:bold; font-size:1rem;">${u.stats ? u.stats.claimedCount : 0}</span>
+         </div>
+         <div style="display:flex; justify-content:space-between;">
+            <span>Aktif Hedef:</span> <span style="color:#fff;">${(u.stats && u.stats.dropName) ? esc(u.stats.dropName) : 'Yok'}</span>
+         </div>
       </div>
       <div style="margin-top:15px; display:flex; gap:10px;">
          ${hasBot 

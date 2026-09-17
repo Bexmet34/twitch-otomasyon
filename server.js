@@ -82,6 +82,7 @@ app.post('/api/user/renew', async (req, res) => {
 
     const currentExpires = (user.expiresAt && user.expiresAt > Date.now()) ? user.expiresAt : Date.now();
     user.expiresAt = currentExpires + (durationDays * 24 * 60 * 60 * 1000);
+    user.lastLicenseCode = licenseCode;
     
     await db.updateUser(user);
     
@@ -149,7 +150,8 @@ app.post('/api/register', async (req, res) => {
       token: token,
       email: email.toLowerCase(),
       password: Buffer.from(password).toString('base64'), // Çok basit şifreleme (demo için)
-      expiresAt: newExpiresAt
+      expiresAt: newExpiresAt,
+      lastLicenseCode: licenseCode
     });
 
     await startBotForUser(newUser);
